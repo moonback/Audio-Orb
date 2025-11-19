@@ -15,6 +15,7 @@ import './components/status-display';
 import './components/latency-indicator';
 import './components/vu-meter';
 import {Analyser} from './analyser';
+import './visual-3d'; // Import du composant 3D mis à jour
 
 @customElement('gdm-live-audio')
 export class GdmLiveAudio extends LitElement {
@@ -28,6 +29,9 @@ export class GdmLiveAudio extends LitElement {
   @state() detune = 0;
   @state() memory = '';
   @state() isProcessingMemory = false;
+  
+  // Zen Mode State
+  @state() isFocusMode = false;
   
   // Personality State
   @state() personalities: Personality[] = [];
@@ -57,10 +61,6 @@ export class GdmLiveAudio extends LitElement {
   // Store the current session's text to summarize later
   @state()
   private currentSessionTranscript: string[] = [];
-
-  // Audio analysers for VU meter
-  private inputAnalyser: Analyser;
-  private outputAnalyser: Analyser;
   
   // Latency tracking
   private lastAudioSendTime = 0;
@@ -89,18 +89,36 @@ export class GdmLiveAudio extends LitElement {
       box-sizing: border-box;
     }
     
+    /* 3D Background Layer */
+    .visual-layer {
+      position: absolute;
+      inset: 0;
+      z-index: 0;
+    }
+    
     /* Layout Containers */
     .ui-layer {
       position: absolute;
       inset: 0;
-      pointer-events: none; /* Allow clicks to pass through to 3D scene where needed */
+      pointer-events: none; 
       z-index: 10;
       display: flex;
       flex-direction: column;
       justify-content: space-between;
+      transition: opacity 0.5s ease;
     }
 
-    /* Allow interaction with UI elements */
+    /* Focus Mode Hiding */
+    .ui-layer.focus-mode > .top-bar,
+    .ui-layer.focus-mode > .chat-container,
+    .ui-layer.focus-mode > control-panel,
+    .ui-layer.focus-mode > settings-panel,
+    .ui-layer.focus-mode > status-display {
+      opacity: 0;
+      pointer-events: none;
+    }
+    
+    /* Allow interaction with UI elements normally */
     control-panel, settings-panel, .top-bar {
       pointer-events: auto;
     }
@@ -109,13 +127,14 @@ export class GdmLiveAudio extends LitElement {
       display: flex;
       justify-content: space-between;
       padding: 20px;
+      transition: opacity 0.3s ease;
     }
 
     /* Chat Bubbles */
     .chat-container {
       flex: 1;
       overflow-y: auto;
-      padding: 20px 20px 120px 20px; /* Bottom padding for control panel */
+      padding: 20px 20px 120px 20px; 
       display: flex;
       flex-direction: column;
       gap: 16px;
@@ -125,6 +144,7 @@ export class GdmLiveAudio extends LitElement {
       height: 100%;
       mask-image: linear-gradient(to bottom, transparent, black 10%, black 90%, transparent);
       -webkit-mask-image: linear-gradient(to bottom, transparent, black 10%, black 90%, transparent);
+      transition: opacity 0.3s ease;
     }
 
     .chat-bubble {
@@ -154,27 +174,32 @@ export class GdmLiveAudio extends LitElement {
     }
 
     @keyframes popIn {
-      from {
-        opacity: 0;
-        transform: translateY(20px) scale(0.9);
-      }
-      to {
-        opacity: 1;
-        transform: translateY(0) scale(1);
-      }
+      from { opacity: 0; transform: translateY(20px) scale(0.9); }
+      to { opacity: 1; transform: translateY(0) scale(1); }
     }
 
-    /* Scrollbar styling */
-    .chat-container::-webkit-scrollbar {
-      width: 6px;
+    /* Hint for Zen Mode */
+    .zen-hint {
+      position: absolute;
+      bottom: 20px;
+      left: 50%;
+      transform: translateX(-50%);
+      color: rgba(255, 255, 255, 0.4);
+      font-size: 0.8rem;
+      opacity: 0;
+      transition: opacity 1s ease;
+      pointer-events: none;
+      text-transform: uppercase;
+      letter-spacing: 1px;
     }
-    .chat-container::-webkit-scrollbar-track {
-      background: transparent;
+    
+    .ui-layer.focus-mode .zen-hint {
+      opacity: 1;
     }
-    .chat-container::-webkit-scrollbar-thumb {
-      background: rgba(255, 255, 255, 0.2);
-      border-radius: 3px;
-    }
+
+    .chat-container::-webkit-scrollbar { width: 6px; }
+    .chat-container::-webkit-scrollbar-track { background: transparent; }
+    .chat-container::-webkit-scrollbar-thumb { background: rgba(255, 255, 255, 0.2); border-radius: 3px; }
   `;
 
   constructor() {
@@ -190,21 +215,15 @@ export class GdmLiveAudio extends LitElement {
     this.personalities = this.personalityManager.getAll();
     this.selectedPersonalityId = localStorage.getItem('gdm-personality') || 'assistant';
     
-    // Verify selected personality exists (it might have been deleted)
     if (!this.personalityManager.getById(this.selectedPersonalityId)) {
       this.selectedPersonalityId = 'assistant';
     }
 
-    // Initialize analysers
     this.inputAnalyser = new Analyser(this.inputNode);
     this.outputAnalyser = new Analyser(this.outputNode);
     
-    // Start VU meter update loop
     this.startVUMeterUpdates();
-    
-    // Start latency update loop
     this.startLatencyUpdates();
-    
     this.initClient();
   }
 
@@ -267,10 +286,8 @@ export class GdmLiveAudio extends LitElement {
   }
 
   private async initSession() {
-    // Always use the Live API compatible model. 
     const model = 'gemini-2.5-flash-native-audio-preview-09-2025';
 
-    // Reset transcript for new session if it's a fresh start (not a retry)
     if (this.retryCount === 0) {
         this.currentSessionTranscript = [];
         this.updateStatus('Prêt');
@@ -279,8 +296,6 @@ export class GdmLiveAudio extends LitElement {
         this.updateStatus(`Reconnexion (${this.retryCount})...`);
     }
 
-
-    // Code de conduite pour assistant (en dur dans le code)
     const CODE_DE_CONDUITE = `Tu t'appel NeuroChat 
     Tu es un assistant IA Develloper par le développeur Maysson.
 CODE DE CONDUITE POUR ASSISTANT :
@@ -319,9 +334,6 @@ CODE DE CONDUITE POUR ASSISTANT :
     const currentPersonality = this.personalityManager.getById(this.selectedPersonalityId) || this.personalityManager.getAll()[0];
     let systemInstruction = `${currentPersonality.prompt} Veuillez parler avec un ton, un accent ou un style ${this.selectedStyle}.`;
 
-    // Ajouter le code de conduite
-    systemInstruction += `\n\n${CODE_DE_CONDUITE}`;
-
     // Inject Memory
     if (this.memory && this.memory.trim().length > 0) {
       systemInstruction += `\n\nINFORMATIONS SUR L'UTILISATEUR (MÉMOIRE) :\n${this.memory}\n\nUtilisez ces informations pour personnaliser la conversation, mais ne les répétez pas explicitement sauf si on vous le demande.`;
@@ -346,68 +358,35 @@ CODE DE CONDUITE POUR ASSISTANT :
           },
           onmessage: async (message: LiveServerMessage) => {
             // Handle Audio
-            const audio =
-              message.serverContent?.modelTurn?.parts[0]?.inlineData;
-
+            const audio = message.serverContent?.modelTurn?.parts[0]?.inlineData;
             if (audio) {
-              // Calculate latency
               if (this.lastAudioSendTime > 0) {
                 const currentTime = performance.now();
                 this.latency = currentTime - this.lastAudioSendTime;
-                this.lastAudioSendTime = 0; // Reset
+                this.lastAudioSendTime = 0; 
               }
-
-              this.nextStartTime = Math.max(
-                this.nextStartTime,
-                this.outputAudioContext.currentTime,
-              );
-
-              const audioBuffer = await decodeAudioData(
-                decode(audio.data),
-                this.outputAudioContext,
-                24000,
-                1,
-              );
+              this.nextStartTime = Math.max(this.nextStartTime, this.outputAudioContext.currentTime);
+              const audioBuffer = await decodeAudioData(decode(audio.data), this.outputAudioContext, 24000, 1);
               const source = this.outputAudioContext.createBufferSource();
               source.buffer = audioBuffer;
               source.connect(this.outputNode);
-              
-              // Apply current settings
               source.playbackRate.value = this.playbackRate;
               source.detune.value = this.detune;
-
-              source.addEventListener('ended', () => {
-                this.sources.delete(source);
-              });
-
+              source.addEventListener('ended', () => this.sources.delete(source));
               source.start(this.nextStartTime);
-              this.nextStartTime = this.nextStartTime + (audioBuffer.duration / this.playbackRate);
+              this.nextStartTime += (audioBuffer.duration / this.playbackRate);
               this.sources.add(source);
             }
 
-            // Handle Transcription (for Memory)
+            // Handle Transcription
             const inputTrans = message.serverContent?.inputTranscription?.text;
             if (inputTrans) {
-              const lastIndex = this.currentSessionTranscript.length - 1;
-              if (lastIndex >= 0 && this.currentSessionTranscript[lastIndex].startsWith('User: ')) {
-                const updatedTranscript = [...this.currentSessionTranscript];
-                updatedTranscript[lastIndex] += inputTrans; // Append to existing bubble
-                this.currentSessionTranscript = updatedTranscript;
-              } else {
-                this.currentSessionTranscript = [...this.currentSessionTranscript, `User: ${inputTrans}`];
-              }
+              this._updateTranscript('User', inputTrans);
             }
 
             const outputTrans = message.serverContent?.outputTranscription?.text;
             if (outputTrans) {
-              const lastIndex = this.currentSessionTranscript.length - 1;
-              if (lastIndex >= 0 && this.currentSessionTranscript[lastIndex].startsWith('AI: ')) {
-                const updatedTranscript = [...this.currentSessionTranscript];
-                updatedTranscript[lastIndex] += outputTrans; // Append to existing bubble
-                this.currentSessionTranscript = updatedTranscript;
-              } else {
-                this.currentSessionTranscript = [...this.currentSessionTranscript, `AI: ${outputTrans}`];
-              }
+              this._updateTranscript('AI', outputTrans);
             }
 
             const interrupted = message.serverContent?.interrupted;
@@ -425,13 +404,9 @@ CODE DE CONDUITE POUR ASSISTANT :
           },
           onclose: (e: CloseEvent) => {
             this.updateStatus('Déconnecté');
-            
-            // Attempt to reconnect if it was an abnormal closure and we were recording
             if (this.isRecording && this.retryCount < this.maxRetries) {
                 this.retryCount++;
-                this.retryTimeout = setTimeout(() => {
-                    this.initSession();
-                }, 2000);
+                this.retryTimeout = setTimeout(() => this.initSession(), 2000);
             } else {
                 this.isRecording = false;
                 this.retryCount = 0;
@@ -440,15 +415,10 @@ CODE DE CONDUITE POUR ASSISTANT :
         },
         config: config,
       });
-      
-      // Successful connection resets retries
       this.retryCount = 0;
-      
     } catch (e) {
       console.error(e);
       this.updateError("Erreur de connexion: " + e.message);
-      
-      // Retry on initial connection failure too
       if (this.retryCount < this.maxRetries) {
         this.retryCount++;
         this.retryTimeout = setTimeout(() => this.initSession(), 3000);
@@ -456,9 +426,21 @@ CODE DE CONDUITE POUR ASSISTANT :
     }
   }
 
+  private _updateTranscript(speaker: string, text: string) {
+     const lastIndex = this.currentSessionTranscript.length - 1;
+     const prefix = speaker + ': ';
+     
+     if (lastIndex >= 0 && this.currentSessionTranscript[lastIndex].startsWith(prefix)) {
+        const updatedTranscript = [...this.currentSessionTranscript];
+        updatedTranscript[lastIndex] += text; 
+        this.currentSessionTranscript = updatedTranscript;
+     } else {
+        this.currentSessionTranscript = [...this.currentSessionTranscript, prefix + text];
+     }
+  }
+
   private updateStatus(msg: string) {
     this.status = msg;
-    // Clear error when status updates successfully
     if (msg === 'Prêt' || msg === 'Écoute...') {
         this.error = '';
     }
@@ -468,6 +450,19 @@ CODE DE CONDUITE POUR ASSISTANT :
     this.error = msg;
   }
 
+  private startLatencyUpdates() {
+    const updateLatency = () => {
+      if (this.lastAudioSendTime > 0 && this.isRecording) {
+        const elapsed = performance.now() - this.lastAudioSendTime;
+        if (elapsed > 100) this.latency = elapsed;
+      } else if (!this.isRecording && this.sources.size === 0) {
+        this.latency = Math.max(0, this.latency * 0.95);
+      }
+      requestAnimationFrame(updateLatency);
+    };
+    updateLatency();
+  }
+  
   private startVUMeterUpdates() {
     const updateLevels = () => {
       if (this.isRecording || this.sources.size > 0) {
@@ -492,69 +487,25 @@ CODE DE CONDUITE POUR ASSISTANT :
     updateLevels();
   }
 
-  private startLatencyUpdates() {
-    const updateLatency = () => {
-      // If we sent audio but haven't received a response yet, estimate latency
-      if (this.lastAudioSendTime > 0 && this.isRecording) {
-        const elapsed = performance.now() - this.lastAudioSendTime;
-        // Only update if it's been more than 100ms (to avoid flickering)
-        if (elapsed > 100) {
-          this.latency = elapsed;
-        }
-      } else if (!this.isRecording && this.sources.size === 0) {
-        // Decay latency when inactive
-        this.latency = Math.max(0, this.latency * 0.95);
-      }
-      requestAnimationFrame(updateLatency);
-    };
-    updateLatency();
-  }
-
   private async startRecording() {
-    if (this.isRecording) {
-      return;
-    }
-
+    if (this.isRecording) return;
     this.inputAudioContext.resume();
-
     this.updateStatus('Accès micro...');
-
     try {
-      this.mediaStream = await navigator.mediaDevices.getUserMedia({
-        audio: true,
-        video: false,
-      });
-
+      this.mediaStream = await navigator.mediaDevices.getUserMedia({ audio: true, video: false });
       this.updateStatus('Écoute...');
-
-      this.sourceNode = this.inputAudioContext.createMediaStreamSource(
-        this.mediaStream,
-      );
+      this.sourceNode = this.inputAudioContext.createMediaStreamSource(this.mediaStream);
       this.sourceNode.connect(this.inputNode);
-
-      const bufferSize = 256;
-      this.scriptProcessorNode = this.inputAudioContext.createScriptProcessor(
-        bufferSize,
-        1,
-        1,
-      );
-
+      this.scriptProcessorNode = this.inputAudioContext.createScriptProcessor(256, 1, 1);
       this.scriptProcessorNode.onaudioprocess = (audioProcessingEvent) => {
         if (!this.isRecording) return;
-
         const inputBuffer = audioProcessingEvent.inputBuffer;
         const pcmData = inputBuffer.getChannelData(0);
-        
-        // Track latency: record send time
         this.lastAudioSendTime = performance.now();
-        
-        // Send data only if session is connected
         this.session?.sendRealtimeInput({media: createBlob(pcmData)});
       };
-
       this.sourceNode.connect(this.scriptProcessorNode);
       this.scriptProcessorNode.connect(this.inputAudioContext.destination);
-
       this.isRecording = true;
     } catch (err) {
       console.error('Error starting recording:', err);
@@ -565,37 +516,27 @@ CODE DE CONDUITE POUR ASSISTANT :
   }
 
   private async stopRecording() {
-    if (!this.isRecording && !this.mediaStream && !this.inputAudioContext)
-      return;
-
+    if (!this.isRecording && !this.mediaStream && !this.inputAudioContext) return;
     this.updateStatus('Arrêté');
-
     this.isRecording = false;
-    this.lastAudioSendTime = 0; // Reset latency tracking
-
+    this.lastAudioSendTime = 0;
     if (this.scriptProcessorNode && this.sourceNode && this.inputAudioContext) {
       this.scriptProcessorNode.disconnect();
       this.sourceNode.disconnect();
     }
-
     this.scriptProcessorNode = null;
     this.sourceNode = null;
-
     if (this.mediaStream) {
       this.mediaStream.getTracks().forEach((track) => track.stop());
       this.mediaStream = null;
     }
-
-    // When stopping, try to update memory
     this.updateMemoryFromSession();
   }
 
   private async updateMemoryFromSession() {
     if (this.currentSessionTranscript.length === 0) return;
-    
     this.isProcessingMemory = true;
     this.updateStatus('Mémorisation...');
-
     try {
       const transcriptText = this.currentSessionTranscript.join('\n');
       const prompt = `
@@ -612,22 +553,22 @@ CODE DE CONDUITE POUR ASSISTANT :
 
       MÉMOIRE MISE À JOUR :
       `;
-
+      
       const response = await this.client.models.generateContent({
         model: 'gemini-2.5-flash',
         contents: prompt,
       });
-
       if (response.text) {
         this.memory = response.text.trim();
         localStorage.setItem('gdm-memory', this.memory);
       }
-    } catch (e) {
-      console.error("Failed to update memory", e);
-    } finally {
+    } catch (e) { 
+        console.error("Failed to update memory", e); 
+    } 
+    finally {
       this.isProcessingMemory = false;
       this.updateStatus('Prêt');
-      this.reset(); // Re-init session to inject new memory
+      this.reset();
     }
   }
 
@@ -638,60 +579,43 @@ CODE DE CONDUITE POUR ASSISTANT :
   }
 
   private async reset() {
-    // Close existing session properly
     if (this.session) {
-      // Clean up WebSocket connection if possible
-      try {
-         // Note: The SDK might not expose a direct close on session, 
-         // but usually re-initializing handles it. 
-         // If there is a close method, call it.
-         (this.session as any).close?.();
-      } catch (e) {
-        console.warn("Error closing session", e);
-      }
+      try { (this.session as any).close?.(); } catch (e) {}
       this.session = null;
     }
-    
-    if (this.isRecording) {
-       await this.stopRecording();
-    }
-
-    // Force reset retry count so initSession clears the transcript
+    if (this.isRecording) await this.stopRecording();
     this.retryCount = 0;
-    
     this.initSession();
   }
 
-  private toggleSettings() {
-    this.showSettings = !this.showSettings;
+  private toggleSettings() { 
+    this.showSettings = !this.showSettings; 
   }
   
   private _handleCreatePersonality(e: CustomEvent) {
     const {name, prompt} = e.detail;
     const newPersonality = this.personalityManager.add(name, prompt);
     this.personalities = this.personalityManager.getAll();
-    this.selectedPersonalityId = newPersonality.id; // Auto-select new
+    this.selectedPersonalityId = newPersonality.id;
   }
-
+  
   private _handleDeletePersonality(e: CustomEvent) {
     const id = e.detail;
     this.personalityManager.delete(id);
     this.personalities = this.personalityManager.getAll();
     if (this.selectedPersonalityId === id) {
-      this.selectedPersonalityId = 'assistant'; // Fallback
+      this.selectedPersonalityId = 'assistant';
     }
   }
-
+  
   private _downloadTranscript() {
     if (this.currentSessionTranscript.length === 0) {
       this.updateError("Rien à télécharger");
       return;
     }
-
     const text = this.currentSessionTranscript.join('\n\n');
     const blob = new Blob([text], { type: 'text/plain' });
     const url = URL.createObjectURL(blob);
-    
     const a = document.createElement('a');
     a.href = url;
     a.download = `audio-orb-session-${new Date().toISOString().slice(0,19).replace(/:/g,'-')}.txt`;
@@ -699,29 +623,40 @@ CODE DE CONDUITE POUR ASSISTANT :
     a.click();
     document.body.removeChild(a);
     URL.revokeObjectURL(url);
-    
     this.updateStatus("Conversation téléchargée");
   }
-
-  private _clearError() {
-    this.error = '';
+  
+  private _clearError() { 
+    this.error = ''; 
   }
 
   updated(changedProperties: PropertyValues) {
     if (changedProperties.has('currentSessionTranscript')) {
       const chatContainer = this.shadowRoot?.getElementById('chatContainer');
-      if (chatContainer) {
-        chatContainer.scrollTop = chatContainer.scrollHeight;
-      }
+      if (chatContainer) chatContainer.scrollTop = chatContainer.scrollHeight;
     }
+  }
+
+  private _toggleFocusMode() {
+    this.isFocusMode = !this.isFocusMode;
   }
 
   render() {
     return html`
+      <!-- 3D Background -->
+      <div class="visual-layer" @dblclick=${this._toggleFocusMode}>
+         <gdm-live-audio-visuals-3d
+            .inputNode=${this.inputNode}
+            .outputNode=${this.outputNode}
+         ></gdm-live-audio-visuals-3d>
+      </div>
+      
       <!-- UI Overlay -->
-      <div class="ui-layer" style="background: radial-gradient(circle at center, #1a1a2e 0%, #000000 100%);">
+      <div class="ui-layer ${this.isFocusMode ? 'focus-mode' : ''}" @dblclick=${this._toggleFocusMode}>
+        
+        <div class="zen-hint">Double-cliquez pour quitter le mode Zen</div>
+        
         <div class="top-bar">
-           <!-- Latency & VU Meter could go here or be floating -->
            <latency-indicator
             .latency=${this.latency}
             .isActive=${this.isRecording || this.sources.size > 0}

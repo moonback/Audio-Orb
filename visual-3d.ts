@@ -28,15 +28,17 @@ export class GdmLiveAudioVisuals3D extends LitElement {
   private inputAnalyser!: Analyser;
   private outputAnalyser!: Analyser;
   private camera!: THREE.PerspectiveCamera;
-  // private backdrop!: THREE.Mesh; // Removed for cleaner design
   private composer!: EffectComposer;
   private waveformGroup!: THREE.Group;
   private waveformBars: THREE.Mesh[] = [];
   private prevTime = 0;
-  private rotation = new THREE.Vector3(0, 0, 0);
-
+  
   // Smoothed audio data
   private smoothedAudioData = new THREE.Vector3(0, 0, 0);
+  
+  // Speaker tracking (-1 = User, 1 = AI, 0 = None/Mixed)
+  private currentSpeaker = 0; 
+  private smoothedSpeaker = 0;
 
   private _outputNode!: AudioNode;
 
@@ -81,46 +83,39 @@ export class GdmLiveAudioVisuals3D extends LitElement {
 
   private init() {
     const scene = new THREE.Scene();
-    scene.background = new THREE.Color(0x000000); // Pure black for professional look
+    scene.background = new THREE.Color(0x000000); // Pure black
 
-    // Minimal lighting - shader is self-illuminated
     const ambientLight = new THREE.AmbientLight(0xffffff, 0.05);
     scene.add(ambientLight);
 
-    // Minimal backdrop - removed for cleaner look
-    // scene.add(backdrop);
-    // this.backdrop = backdrop;
-
-    // Camera - Centered view for waveform
     const camera = new THREE.PerspectiveCamera(
       75,
       window.innerWidth / window.innerHeight,
       0.1,
       1000,
     );
-    camera.position.set(0, 0, 5); // Further back to see full waveform
+    camera.position.set(0, 0, 5);
     camera.lookAt(0, 0, 0);
     this.camera = camera;
 
     const renderer = new THREE.WebGLRenderer({
       canvas: this.canvas,
-      antialias: true, // Enable for smoother edges
+      antialias: true,
       powerPreference: "high-performance",
       alpha: false
     });
     renderer.setSize(window.innerWidth, window.innerHeight);
-    renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2)); // Cap pixel ratio for performance
+    renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
     renderer.setClearColor(0x000000, 1);
 
-    // Professional Waveform - Optimized and elegant
+    // Professional Waveform
     const aspect = window.innerWidth / window.innerHeight;
-    const barCount = 48; // Reduced for better performance while maintaining quality
-    const baseRadius = Math.min(2.2, 2.0 * Math.min(aspect, 1.0 / aspect)); // Slightly larger, better centered
-    const barWidth = 0.05; // Slightly wider for better visibility
+    const barCount = 48;
+    const baseRadius = Math.min(2.2, 2.0 * Math.min(aspect, 1.0 / aspect));
+    const barWidth = 0.05;
     
     const waveformGroup = new THREE.Group();
     
-    // Create individual bars arranged in a circle
     for (let i = 0; i < barCount; i++) {
       const angle = (i / barCount) * Math.PI * 2;
       const barGeometry = new THREE.BoxGeometry(barWidth, 0.1, barWidth);
@@ -130,7 +125,8 @@ export class GdmLiveAudioVisuals3D extends LitElement {
           time: { value: 0 },
           audioData: { value: new THREE.Vector3() },
           barIndex: { value: i / barCount },
-          audioValue: { value: 0 }
+          audioValue: { value: 0 },
+          activeSpeaker: { value: 0 } // New uniform
         },
         vertexShader: waveformVS,
         fragmentShader: waveformFS,
@@ -139,12 +135,10 @@ export class GdmLiveAudioVisuals3D extends LitElement {
       
       const bar = new THREE.Mesh(barGeometry, barMaterial);
       
-      // Position bar on circle
       bar.position.x = Math.cos(angle) * baseRadius;
       bar.position.y = Math.sin(angle) * baseRadius;
       bar.position.z = 0;
       
-      // Rotate bar to face outward
       bar.rotation.z = angle + Math.PI / 2;
       
       waveformGroup.add(bar);
@@ -157,12 +151,11 @@ export class GdmLiveAudioVisuals3D extends LitElement {
     // Post Processing
     const renderPass = new RenderPass(scene, camera);
 
-    // Refined bloom for professional glow
     const bloomPass = new UnrealBloomPass(
       new THREE.Vector2(window.innerWidth, window.innerHeight),
-      0.8,  // Subtle strength
-      0.3,  // Smaller radius for precision
-      0.4,  // Higher threshold - only bright elements glow
+      0.8,
+      0.3,
+      0.4,
     );
 
     const composer = new EffectComposer(renderer);
@@ -174,14 +167,11 @@ export class GdmLiveAudioVisuals3D extends LitElement {
     const onWindowResize = () => {
       camera.aspect = window.innerWidth / window.innerHeight;
       camera.updateProjectionMatrix();
-      const dPR = renderer.getPixelRatio();
       const w = window.innerWidth;
       const h = window.innerHeight;
-      // backdrop.material.uniforms.resolution.value.set(w * dPR, h * dPR);
       renderer.setSize(w, h);
       composer.setSize(w, h);
       
-      // Update waveform radius on resize
       const aspect = w / h;
       const baseRadius = Math.min(2.2, 2.0 * Math.min(aspect, 1.0 / aspect));
       const barCount = this.waveformBars.length;
@@ -204,73 +194,70 @@ export class GdmLiveAudioVisuals3D extends LitElement {
     this.inputAnalyser.update();
     this.outputAnalyser.update();
 
-    const t = performance.now() / 1000; // Time in seconds
-    const dt = t - this.prevTime;
+    const t = performance.now() / 1000;
     this.prevTime = t;
 
-    // Audio Data Processing
-    // Get max values from input (mic) and output (AI)
-    // Analyser data is 0-255
-    
-    // Combine input and output for a unified visual
-    // We want the waveform to react to both user and AI
     const inLow = this.inputAnalyser.data[0] / 255;
     const inMid = this.inputAnalyser.data[1] / 255;
     const inHigh = this.inputAnalyser.data[2] / 255;
+    const inputSum = inLow + inMid + inHigh;
     
     const outLow = this.outputAnalyser.data[0] / 255;
     const outMid = this.outputAnalyser.data[1] / 255;
     const outHigh = this.outputAnalyser.data[2] / 255;
+    const outputSum = outLow + outMid + outHigh;
+
+    // Determine active speaker
+    if (inputSum > 0.1 && inputSum > outputSum) {
+        this.currentSpeaker = -1.0; // User
+    } else if (outputSum > 0.1) {
+        this.currentSpeaker = 1.0; // AI
+    } else {
+        this.currentSpeaker = 0.0; // Silence/Mixed
+    }
+
+    // Smooth transition for speaker color
+    this.smoothedSpeaker += (this.currentSpeaker - this.smoothedSpeaker) * 0.05;
 
     const targetLow = Math.max(inLow, outLow);
     const targetMid = Math.max(inMid, outMid);
     const targetHigh = Math.max(inHigh, outHigh);
 
-    // Smooth the data (Lerp) - More responsive for professional feel
-    const lerpFactor = 0.2; // Slightly faster response
+    const lerpFactor = 0.2;
     this.smoothedAudioData.x += (targetLow - this.smoothedAudioData.x) * lerpFactor;
     this.smoothedAudioData.y += (targetMid - this.smoothedAudioData.y) * lerpFactor;
     this.smoothedAudioData.z += (targetHigh - this.smoothedAudioData.z) * lerpFactor;
 
-    // Update Waveform - Update each bar based on audio data
     const barCount = this.waveformBars.length;
     const aspect = window.innerWidth / window.innerHeight;
-    const baseRadius = Math.min(2.0, 1.8 * Math.min(aspect, 1.0 / aspect)); // Adapt to screen aspect
+    const baseRadius = Math.min(2.0, 1.8 * Math.min(aspect, 1.0 / aspect));
     
     for (let i = 0; i < barCount; i++) {
       const bar = this.waveformBars[i];
       const mat = bar.material as THREE.ShaderMaterial;
       
-      // Map bar index to audio frequency bin
       const audioIndex = Math.floor((i / barCount) * 16);
       const inVal = this.inputAnalyser.data[audioIndex] || 0;
       const outVal = this.outputAnalyser.data[audioIndex] || 0;
       const audioValue = Math.max(inVal, outVal) / 255.0;
       
-      // Update uniforms
       mat.uniforms.time.value = t;
       mat.uniforms.audioData.value.copy(this.smoothedAudioData);
       mat.uniforms.audioValue.value = audioValue;
+      mat.uniforms.activeSpeaker.value = this.smoothedSpeaker; // Pass speaker info
       
-      // Update bar height and position based on audio - Smooth and elegant
       const angle = (i / barCount) * Math.PI * 2;
-      // Professional height scaling with smooth curve
       const barHeight = 0.15 + audioValue * 2.8;
       
-      // Smooth scale transition
       const currentScale = bar.scale.y;
       const targetScale = barHeight;
-      bar.scale.y += (targetScale - currentScale) * 0.3; // Smooth interpolation
+      bar.scale.y += (targetScale - currentScale) * 0.3;
       
       bar.position.x = Math.cos(angle) * baseRadius;
       bar.position.y = Math.sin(angle) * baseRadius;
     }
     
-    // Elegant subtle rotation - very smooth
     this.waveformGroup.rotation.z += 0.001 + this.smoothedAudioData.x * 0.005;
-
-    // Camera stays perfectly centered
-    this.camera.lookAt(0, 0, 0);
 
     this.composer.render();
   }

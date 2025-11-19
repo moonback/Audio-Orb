@@ -9,6 +9,7 @@ const vs = `
   uniform vec3 audioData; // x=low, y=mid, z=high
   uniform float barIndex; // 0.0 to 1.0
   uniform float audioValue; // 0.0 to 1.0
+  uniform float activeSpeaker; // -1.0 = user, 1.0 = ai, 0.0 = mixed
   
   varying vec3 vColor;
   varying float vIntensity;
@@ -19,17 +20,32 @@ const vs = `
     vIntensity = audioValue;
     vUv = uv;
     
-    // Elegant gradient color palette - Professional blue to cyan
-    vec3 primaryColor = vec3(0.4, 0.7, 1.0);   // Bright cyan-blue
-    vec3 secondaryColor = vec3(0.6, 0.4, 0.9); // Purple accent
-    vec3 accentColor = vec3(0.2, 0.9, 0.8);    // Cyan highlight
+    // Default palette (Mixed/Neutral) - Cyan/Purple
+    vec3 neutralPrimary = vec3(0.4, 0.7, 1.0);
+    vec3 neutralSecondary = vec3(0.6, 0.4, 0.9);
+    
+    // User palette (Input) - Electric Blue / Green
+    vec3 userPrimary = vec3(0.2, 0.8, 1.0);
+    vec3 userSecondary = vec3(0.2, 1.0, 0.6);
+    
+    // AI palette (Output) - Gold / Purple / Warm
+    vec3 aiPrimary = vec3(1.0, 0.6, 0.2);
+    vec3 aiSecondary = vec3(0.9, 0.2, 0.8);
+    
+    // Interpolate based on activeSpeaker
+    // activeSpeaker goes from -1 (User) to 1 (AI)
+    float t = activeSpeaker * 0.5 + 0.5; // 0 to 1 range
+    
+    vec3 targetPrimary = mix(userPrimary, aiPrimary, t);
+    vec3 targetSecondary = mix(userSecondary, aiSecondary, t);
     
     // Smooth color transition based on position
     float colorMix = smoothstep(0.0, 1.0, barIndex);
-    vec3 baseColor = mix(primaryColor, secondaryColor, colorMix * 0.6);
+    vec3 baseColor = mix(targetPrimary, targetSecondary, colorMix * 0.6);
     
     // Add accent color based on high frequencies
-    baseColor = mix(baseColor, accentColor, audioData.z * 0.3);
+    vec3 accentColor = vec3(1.0, 1.0, 1.0);
+    baseColor = mix(baseColor, accentColor, audioData.z * 0.4);
     
     vColor = baseColor;
     
@@ -61,12 +77,12 @@ const fs = `
     color = mix(color * 0.6, color, gradient);
     
     // Subtle glow effect - more refined
-    float glow = pow(vIntensity, 2.0) * 0.4;
+    float glow = pow(vIntensity, 2.0) * 0.6;
     vec3 glowColor = vColor * 1.5;
     color += glowColor * glow;
     
     // Smooth brightness variation with audio
-    float brightness = 0.5 + audioValue * 0.5;
+    float brightness = 0.5 + audioValue * 0.8;
     color *= brightness;
     
     // Refined edge glow
@@ -87,4 +103,3 @@ const fs = `
 `;
 
 export {vs, fs};
-
