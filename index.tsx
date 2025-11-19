@@ -9,9 +9,9 @@ import {LitElement, css, html, PropertyValues} from 'lit';
 import {customElement, state} from 'lit/decorators.js';
 import {createBlob, decode, decodeAudioData} from './utils';
 import './visual-3d';
-
-const VOICES = ['Orus', 'Puck', 'Charon', 'Kore', 'Fenrir', 'Zephyr', 'Aoede'];
-const STYLES = ['Natural', 'Professional', 'Cheerful', 'British Accent', 'French Accent', 'Whispering', 'Enthusiastic'];
+import './components/settings-panel';
+import './components/control-panel';
+import './components/status-display';
 
 @customElement('gdm-live-audio')
 export class GdmLiveAudio extends LitElement {
@@ -47,277 +47,16 @@ export class GdmLiveAudio extends LitElement {
   static styles = css`
     :host {
       font-family: 'Google Sans', Roboto, sans-serif;
+      --primary-color: #a8a8ff;
+      --glass-bg: rgba(20, 20, 30, 0.6);
+      --glass-border: rgba(255, 255, 255, 0.1);
+      --glass-highlight: rgba(255, 255, 255, 0.05);
+      --text-main: rgba(255, 255, 255, 0.9);
+      --text-dim: rgba(255, 255, 255, 0.5);
     }
 
-    #status {
-      position: absolute;
-      bottom: 5vh;
-      left: 0;
-      right: 0;
-      z-index: 10;
-      text-align: center;
-      color: white;
-      text-shadow: 0 1px 4px rgba(0,0,0,0.5);
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      gap: 8px;
-    }
-
-    .spinner {
-      display: inline-block;
-      width: 16px;
-      height: 16px;
-      border: 2px solid rgba(255,255,255,0.3);
-      border-radius: 50%;
-      border-top-color: #fff;
-      animation: spin 1s ease-in-out infinite;
-    }
-
-    @keyframes spin {
-      to { transform: rotate(360deg); }
-    }
-
-    .controls {
-      z-index: 10;
-      position: absolute;
-      bottom: 10vh;
-      left: 0;
-      right: 0;
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      flex-direction: row;
-      gap: 20px;
-
-      button {
-        outline: none;
-        border: 1px solid rgba(255, 255, 255, 0.2);
-        color: white;
-        border-radius: 50%;
-        background: rgba(255, 255, 255, 0.1);
-        width: 64px;
-        height: 64px;
-        cursor: pointer;
-        display: flex;
-        align-items: center;
-        justify-content: center;
-        transition: all 0.2s ease;
-
-        &:hover {
-          background: rgba(255, 255, 255, 0.2);
-          transform: scale(1.05);
-        }
-        
-        &:active {
-          transform: scale(0.95);
-        }
-
-        &.recording {
-          background: rgba(200, 0, 0, 0.2);
-          border-color: rgba(200, 0, 0, 0.5);
-        }
-      }
-
-      button:disabled {
-        opacity: 0.5;
-        cursor: not-allowed;
-      }
-    }
-
-    .settings-overlay {
-      position: fixed;
-      top: 0;
-      left: 0;
-      right: 0;
-      bottom: 0;
-      background: rgba(0, 0, 0, 0.5);
-      z-index: 100;
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      backdrop-filter: blur(4px);
-    }
-
-    .settings-panel {
-      background: rgba(20, 20, 30, 0.95);
-      border: 1px solid rgba(255, 255, 255, 0.1);
-      border-radius: 24px;
-      padding: 32px;
-      width: 320px;
-      max-height: 80vh;
-      overflow-y: auto;
-      color: white;
-      box-shadow: 0 20px 40px rgba(0,0,0,0.4);
-    }
-
-    /* Custom scrollbar for settings */
-    .settings-panel::-webkit-scrollbar {
-      width: 8px;
-    }
-    .settings-panel::-webkit-scrollbar-track {
-      background: rgba(255, 255, 255, 0.05);
-      border-radius: 4px;
-    }
-    .settings-panel::-webkit-scrollbar-thumb {
-      background: rgba(255, 255, 255, 0.2);
-      border-radius: 4px;
-    }
-
-    .settings-header {
-      display: flex;
-      justify-content: space-between;
-      align-items: center;
-      margin-bottom: 24px;
-      
-      h2 {
-        margin: 0;
-        font-size: 1.5rem;
-        font-weight: 400;
-      }
-
-      button {
-        background: none;
-        border: none;
-        color: rgba(255,255,255,0.6);
-        cursor: pointer;
-        padding: 4px;
-        
-        &:hover {
-          color: white;
-        }
-      }
-    }
-
-    .setting-group {
-      margin-bottom: 20px;
-    }
-
-    .setting-label {
-      display: block;
-      margin-bottom: 8px;
-      font-size: 0.9rem;
-      color: rgba(255,255,255,0.7);
-      display: flex;
-      justify-content: space-between;
-      align-items: center;
-    }
-
-    .setting-value {
-      color: rgba(255,255,255,0.4);
-    }
-
-    select {
-      width: 100%;
-      background: rgba(255,255,255,0.1);
-      border: 1px solid rgba(255,255,255,0.2);
-      color: white;
-      padding: 12px;
-      border-radius: 12px;
-      font-size: 1rem;
-      outline: none;
-      cursor: pointer;
-      
-      &:hover {
-        border-color: rgba(255,255,255,0.4);
-      }
-      
-      option {
-        background: #1a1a1a;
-      }
-    }
-
-    input[type=range] {
-      width: 100%;
-      accent-color: #a8a8ff;
-      height: 4px;
-      border-radius: 2px;
-      background: rgba(255,255,255,0.2);
-      outline: none;
-    }
-
-    /* Switch styles */
-    .switch {
-      position: relative;
-      display: inline-block;
-      width: 40px;
-      height: 24px;
-      flex-shrink: 0;
-    }
-
-    .switch input {
-      opacity: 0;
-      width: 0;
-      height: 0;
-    }
-
-    .slider {
-      position: absolute;
-      cursor: pointer;
-      top: 0;
-      left: 0;
-      right: 0;
-      bottom: 0;
-      background-color: rgba(255, 255, 255, 0.1);
-      transition: .4s;
-      border-radius: 24px;
-    }
-
-    .slider:before {
-      position: absolute;
-      content: "";
-      height: 16px;
-      width: 16px;
-      left: 4px;
-      bottom: 4px;
-      background-color: white;
-      transition: .4s;
-      border-radius: 50%;
-    }
-
-    input:checked + .slider {
-      background-color: #a8a8ff;
-    }
-
-    input:checked + .slider:before {
-      transform: translateX(16px);
-    }
-
-    .info-text {
-      font-size: 0.8rem;
-      color: rgba(255,255,255,0.4);
-      margin-top: 4px;
-      line-height: 1.4;
-    }
-
-    textarea.memory-display {
-      width: 100%;
-      height: 100px;
-      background: rgba(0, 0, 0, 0.2);
-      border: 1px solid rgba(255, 255, 255, 0.1);
-      border-radius: 8px;
-      color: rgba(255, 255, 255, 0.7);
-      padding: 8px;
-      font-family: monospace;
-      font-size: 0.8rem;
-      resize: none;
+    * {
       box-sizing: border-box;
-    }
-
-    .btn-small {
-      background: rgba(255, 255, 255, 0.1);
-      border: 1px solid rgba(255, 255, 255, 0.2);
-      color: white;
-      padding: 6px 12px;
-      border-radius: 6px;
-      cursor: pointer;
-      font-size: 0.8rem;
-      margin-top: 8px;
-      width: 100%;
-    }
-    
-    .btn-small:hover {
-      background: rgba(255, 255, 255, 0.2);
     }
   `;
 
@@ -632,8 +371,6 @@ export class GdmLiveAudio extends LitElement {
     if (this.session) {
       // Just in case, though session is often managed by the loop, 
       // calling close ensures we don't have dangling connections if the user resets manually
-      // Note: Live API doesn't have an explicit 'disconnect' on the session object in all SDK versions, 
-      // but re-initializing handles it.
     }
     
     if (this.isRecording) {
@@ -650,150 +387,41 @@ export class GdmLiveAudio extends LitElement {
   render() {
     return html`
       <div>
-        <div class="controls">
-          <button
-            @click=${this.toggleSettings}
-            title="Settings">
-            <svg xmlns="http://www.w3.org/2000/svg" height="24px" viewBox="0 -960 960 960" width="24px" fill="#ffffff"><path d="m370-80-16-128q-13-5-24.5-12T307-235l-119 50L78-375l103-78q-1-7-1-13.5v-27q0-6.5 1-13.5L78-585l110-190 119 50q11-8 23-15t24-12l16-128h220l16 128q13 5 24.5 12t22.5 15l119-50 110 190-103 78q1 7 1 13.5v27q0 6.5-1 13.5l103 78-110 190-119-50q-11 8-23 15t-24 12l-16 128H370Zm112-260q58 0 99-41t41-99q0-58-41-99t-99-41q-58 0-99 41t-41 99q0 58 41 99t99 41Z"/></svg>
-          </button>
+        <control-panel
+          .isRecording=${this.isRecording}
+          .isProcessingMemory=${this.isProcessingMemory}
+          @toggle-settings=${this.toggleSettings}
+          @start-recording=${this.startRecording}
+          @stop-recording=${this.stopRecording}
+          @reset=${this.reset}
+        ></control-panel>
 
-          ${!this.isRecording
-            ? html`
-                <button
-                  id="startButton"
-                  @click=${this.startRecording}
-                  ?disabled=${this.isProcessingMemory}>
-                  <svg
-                    viewBox="0 0 100 100"
-                    width="32px"
-                    height="32px"
-                    fill="#ff4444"
-                    xmlns="http://www.w3.org/2000/svg">
-                    <circle cx="50" cy="50" r="50" />
-                  </svg>
-                </button>`
-            : html`
-                <button
-                  id="stopButton"
-                  class="recording"
-                  @click=${this.stopRecording}>
-                  <svg
-                    viewBox="0 0 100 100"
-                    width="32px"
-                    height="32px"
-                    fill="#ffffff"
-                    xmlns="http://www.w3.org/2000/svg">
-                    <rect x="20" y="20" width="60" height="60" rx="5" />
-                  </svg>
-                </button>`}
+        <status-display
+          .status=${this.status}
+          .error=${this.error}
+          .isProcessing=${this.isProcessingMemory}
+        ></status-display>
 
-           <button
-            id="resetButton"
-            @click=${this.reset}
-            ?disabled=${this.isRecording || this.isProcessingMemory}>
-            <svg
-              xmlns="http://www.w3.org/2000/svg"
-              height="24px"
-              viewBox="0 -960 960 960"
-              width="24px"
-              fill="#ffffff">
-              <path
-                d="M480-160q-134 0-227-93t-93-227q0-134 93-227t227-93q69 0 132 28.5T720-690v-110h80v280H520v-80h168q-32-56-87.5-88T480-720q-100 0-170 70t-70 170q0 100 70 170t170 70q77 0 139-44t87-116h84q-28 106-114 173t-196 67Z" />
-            </svg>
-          </button>
-        </div>
-
-        <div id="status"> 
-          ${this.isProcessingMemory ? html`<span class="spinner"></span>` : ''}
-          ${this.status} ${this.error ? `| ${this.error}` : ''} 
-        </div>
         <gdm-live-audio-visuals-3d
           .inputNode=${this.inputNode}
           .outputNode=${this.outputNode}></gdm-live-audio-visuals-3d>
 
-        ${this.showSettings ? html`
-          <div class="settings-overlay" @click=${(e) => e.target === e.currentTarget && this.toggleSettings()}>
-            <div class="settings-panel">
-              <div class="settings-header">
-                <h2>Voice Settings</h2>
-                <button @click=${this.toggleSettings}>
-                  <svg xmlns="http://www.w3.org/2000/svg" height="24px" viewBox="0 -960 960 960" width="24px" fill="#ffffff"><path d="m256-200-56-56 224-224-224-224 56-56 224 224 224-224 56 56-224 224 224 224-56 56-224-224-224 224Z"/></svg>
-                </button>
-              </div>
-
-              <div class="setting-group">
-                <label class="setting-label">
-                  <span>Thinking Mode</span>
-                  <label class="switch">
-                    <input 
-                      type="checkbox" 
-                      ?checked=${this.isThinkingMode}
-                      @change=${(e: any) => this.isThinkingMode = e.target.checked}
-                    >
-                    <span class="slider"></span>
-                  </label>
-                </label>
-                <div class="info-text">
-                  Uses Gemini 2.5 Flash with thinking config (Higher latency).
-                </div>
-              </div>
-
-              <div class="setting-group">
-                <label class="setting-label">Long-term Memory</label>
-                <textarea class="memory-display" readonly>${this.memory || "No memory yet. Talk to me!"}</textarea>
-                <button class="btn-small" @click=${this.clearMemory}>Clear Memory</button>
-              </div>
-
-              <div class="setting-group">
-                <label class="setting-label">Voice</label>
-                <select @change=${(e) => this.selectedVoice = e.target.value}>
-                  ${VOICES.map(voice => html`
-                    <option value=${voice} ?selected=${this.selectedVoice === voice}>${voice}</option>
-                  `)}
-                </select>
-              </div>
-
-              <div class="setting-group">
-                <label class="setting-label">Style & Accent</label>
-                <select @change=${(e) => this.selectedStyle = e.target.value}>
-                  ${STYLES.map(style => html`
-                    <option value=${style} ?selected=${this.selectedStyle === style}>${style}</option>
-                  `)}
-                </select>
-              </div>
-
-              <div class="setting-group">
-                <label class="setting-label">
-                  <span>Speed</span>
-                  <span class="setting-value">${this.playbackRate.toFixed(1)}x</span>
-                </label>
-                <input 
-                  type="range" 
-                  min="0.5" 
-                  max="2.0" 
-                  step="0.1" 
-                  .value=${this.playbackRate}
-                  @input=${(e) => this.playbackRate = parseFloat(e.target.value)}
-                >
-              </div>
-
-              <div class="setting-group">
-                <label class="setting-label">
-                  <span>Pitch (Detune)</span>
-                  <span class="setting-value">${this.detune} cents</span>
-                </label>
-                <input 
-                  type="range" 
-                  min="-1200" 
-                  max="1200" 
-                  step="100" 
-                  .value=${this.detune}
-                  @input=${(e) => this.detune = parseFloat(e.target.value)}
-                >
-              </div>
-            </div>
-          </div>
-        ` : ''}
+        <settings-panel
+          .show=${this.showSettings}
+          .selectedVoice=${this.selectedVoice}
+          .selectedStyle=${this.selectedStyle}
+          .playbackRate=${this.playbackRate}
+          .detune=${this.detune}
+          .isThinkingMode=${this.isThinkingMode}
+          .memory=${this.memory}
+          @close-settings=${this.toggleSettings}
+          @thinking-mode-changed=${(e: CustomEvent) => this.isThinkingMode = e.detail}
+          @clear-memory=${this.clearMemory}
+          @voice-changed=${(e: CustomEvent) => this.selectedVoice = e.detail}
+          @style-changed=${(e: CustomEvent) => this.selectedStyle = e.detail}
+          @rate-changed=${(e: CustomEvent) => this.playbackRate = e.detail}
+          @detune-changed=${(e: CustomEvent) => this.detune = e.detail}
+        ></settings-panel>
       </div>
     `;
   }
