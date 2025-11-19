@@ -117,7 +117,7 @@ export class GdmLiveAudio extends LitElement {
       opacity: 0;
       pointer-events: none;
     }
-    
+
     /* Allow interaction with UI elements normally */
     control-panel, settings-panel, .top-bar {
       pointer-events: auto;
@@ -186,15 +186,15 @@ export class GdmLiveAudio extends LitElement {
       transform: translateX(-50%);
       color: rgba(255, 255, 255, 0.4);
       font-size: 0.8rem;
-      opacity: 0;
+        opacity: 0;
       transition: opacity 1s ease;
       pointer-events: none;
       text-transform: uppercase;
       letter-spacing: 1px;
-    }
+      }
     
     .ui-layer.focus-mode .zen-hint {
-      opacity: 1;
+        opacity: 1;
     }
 
     .chat-container::-webkit-scrollbar { width: 6px; }
@@ -289,7 +289,7 @@ export class GdmLiveAudio extends LitElement {
     const model = 'gemini-2.5-flash-native-audio-preview-09-2025';
 
     if (this.retryCount === 0) {
-        this.currentSessionTranscript = [];
+    this.currentSessionTranscript = [];
         this.updateStatus('Prêt');
     } else {
         console.log(`Reconnexion... Tentative ${this.retryCount}/${this.maxRetries}`);
@@ -436,7 +436,7 @@ CODE DE CONDUITE POUR ASSISTANT :
         this.currentSessionTranscript = updatedTranscript;
      } else {
         this.currentSessionTranscript = [...this.currentSessionTranscript, prefix + text];
-     }
+    }
   }
 
   private updateStatus(msg: string) {
@@ -462,7 +462,7 @@ CODE DE CONDUITE POUR ASSISTANT :
     };
     updateLatency();
   }
-  
+
   private startVUMeterUpdates() {
     const updateLevels = () => {
       if (this.isRecording || this.sources.size > 0) {
@@ -553,7 +553,7 @@ CODE DE CONDUITE POUR ASSISTANT :
 
       MÉMOIRE MISE À JOUR :
       `;
-      
+
       const response = await this.client.models.generateContent({
         model: 'gemini-2.5-flash',
         contents: prompt,
@@ -562,8 +562,8 @@ CODE DE CONDUITE POUR ASSISTANT :
         this.memory = response.text.trim();
         localStorage.setItem('gdm-memory', this.memory);
       }
-    } catch (e) { 
-        console.error("Failed to update memory", e); 
+    } catch (e) {
+      console.error("Failed to update memory", e);
     } 
     finally {
       this.isProcessingMemory = false;
@@ -588,8 +588,8 @@ CODE DE CONDUITE POUR ASSISTANT :
     this.initSession();
   }
 
-  private toggleSettings() { 
-    this.showSettings = !this.showSettings; 
+  private toggleSettings() {
+    this.showSettings = !this.showSettings;
   }
   
   private _handleCreatePersonality(e: CustomEvent) {
@@ -598,7 +598,7 @@ CODE DE CONDUITE POUR ASSISTANT :
     this.personalities = this.personalityManager.getAll();
     this.selectedPersonalityId = newPersonality.id;
   }
-  
+
   private _handleDeletePersonality(e: CustomEvent) {
     const id = e.detail;
     this.personalityManager.delete(id);
@@ -657,6 +657,11 @@ CODE DE CONDUITE POUR ASSISTANT :
         <div class="zen-hint">Double-cliquez pour quitter le mode Zen</div>
         
         <div class="top-bar">
+           <vu-meter
+            .inputLevel=${this.inputLevel}
+            .outputLevel=${this.outputLevel}
+            .isActive=${this.isRecording || this.sources.size > 0}
+          ></vu-meter>
            <latency-indicator
             .latency=${this.latency}
             .isActive=${this.isRecording || this.sources.size > 0}
