@@ -10,6 +10,8 @@ import {customElement, state} from 'lit/decorators.js';
 import {createBlob, decode, decodeAudioData} from './utils';
 import {Personality, PersonalityManager} from './personality';
 import {MemoryManager, StructuredMemory, MemoryCategory} from './memory';
+import {debouncedStorage} from './utils/storage';
+import {ThrottledRAF} from './utils/performance';
 import './components/settings-panel';
 import './components/control-panel';
 import './components/status-display';
@@ -75,6 +77,11 @@ export class GdmLiveAudio extends LitElement {
   // Latency tracking
   private lastAudioSendTime = 0;
   private latencyUpdateInterval: number | null = null;
+  
+  // Performance optimizations
+  private vuMeterRAF: ThrottledRAF;
+  private latencyRAF: ThrottledRAF;
+  private keyboardHandler: ((e: KeyboardEvent) => void) | null = null;
 
   static styles = css`
     :host {
@@ -214,21 +221,25 @@ export class GdmLiveAudio extends LitElement {
 
   constructor() {
     super();
+    // Initialize performance optimizations
+    this.vuMeterRAF = new ThrottledRAF(16); // ~60fps
+    this.latencyRAF = new ThrottledRAF(16);
+    
     // Load settings from local storage
-    this.selectedVoice = localStorage.getItem('gdm-voice') || 'Orus';
-    this.selectedStyle = localStorage.getItem('gdm-style') || 'Naturel';
-    this.playbackRate = parseFloat(localStorage.getItem('gdm-rate') || '1.0');
-    this.detune = parseFloat(localStorage.getItem('gdm-detune') || '0');
+    this.selectedVoice = debouncedStorage.getItem('gdm-voice') || 'Orus';
+    this.selectedStyle = debouncedStorage.getItem('gdm-style') || 'Naturel';
+    this.playbackRate = parseFloat(debouncedStorage.getItem('gdm-rate') || '1.0');
+    this.detune = parseFloat(debouncedStorage.getItem('gdm-detune') || '0');
     // Load structured memory
     this.structuredMemory = this.memoryManager.load();
     this.memory = this.memoryManager.toText();
-    this.bassGain = parseFloat(localStorage.getItem('gdm-bass') || '0');
-    this.trebleGain = parseFloat(localStorage.getItem('gdm-treble') || '0');
-    this.audioPreset = localStorage.getItem('gdm-audio-preset') || 'Personnalisé';
+    this.bassGain = parseFloat(debouncedStorage.getItem('gdm-bass') || '0');
+    this.trebleGain = parseFloat(debouncedStorage.getItem('gdm-treble') || '0');
+    this.audioPreset = debouncedStorage.getItem('gdm-audio-preset') || 'Personnalisé';
     
     // Init Personalities
     this.personalities = this.personalityManager.getAll();
-    this.selectedPersonalityId = localStorage.getItem('gdm-personality') || 'assistant';
+    this.selectedPersonalityId = debouncedStorage.getItem('gdm-personality') || 'assistant';
     
     if (!this.personalityManager.getById(this.selectedPersonalityId)) {
       this.selectedPersonalityId = 'assistant';
@@ -264,7 +275,7 @@ export class GdmLiveAudio extends LitElement {
     for (const source of this.sources) {
       source.playbackRate.value = this.playbackRate;
     }
-    localStorage.setItem('gdm-rate', String(this.playbackRate));
+    debouncedStorage.setItem('gdm-rate', String(this.playbackRate));
   }
 
   private _handleDetuneChange(e: CustomEvent) {
@@ -272,26 +283,26 @@ export class GdmLiveAudio extends LitElement {
     for (const source of this.sources) {
       source.detune.value = this.detune;
     }
-    localStorage.setItem('gdm-detune', String(this.detune));
+    debouncedStorage.setItem('gdm-detune', String(this.detune));
   }
 
   private _handleVoiceChange(e: CustomEvent) {
     this.selectedVoice = e.detail;
-    localStorage.setItem('gdm-voice', this.selectedVoice);
+    debouncedStorage.setItem('gdm-voice', this.selectedVoice);
     this.updateStatus('Paramètres mis à jour');
     this.reset();
   }
 
   private _handleStyleChange(e: CustomEvent) {
     this.selectedStyle = e.detail;
-    localStorage.setItem('gdm-style', this.selectedStyle);
+    debouncedStorage.setItem('gdm-style', this.selectedStyle);
     this.updateStatus('Paramètres mis à jour');
     this.reset();
   }
 
   private _handlePersonalityChange(e: CustomEvent) {
     this.selectedPersonalityId = e.detail;
-    localStorage.setItem('gdm-personality', this.selectedPersonalityId);
+    debouncedStorage.setItem('gdm-personality', this.selectedPersonalityId);
     this.updateStatus('Nouvelle personnalité chargée');
     this.reset();
   }
@@ -301,7 +312,7 @@ export class GdmLiveAudio extends LitElement {
     if (this.bassFilter) {
       this.bassFilter.gain.value = this.bassGain;
     }
-    localStorage.setItem('gdm-bass', String(this.bassGain));
+    debouncedStorage.setItem('gdm-bass', String(this.bassGain));
   }
 
   private _handleTrebleChange(e: CustomEvent) {
@@ -309,12 +320,12 @@ export class GdmLiveAudio extends LitElement {
     if (this.trebleFilter) {
       this.trebleFilter.gain.value = this.trebleGain;
     }
-    localStorage.setItem('gdm-treble', String(this.trebleGain));
+    debouncedStorage.setItem('gdm-treble', String(this.trebleGain));
   }
 
   private _handleAudioPresetChange(e: CustomEvent) {
     this.audioPreset = e.detail;
-    localStorage.setItem('gdm-audio-preset', this.audioPreset);
+    debouncedStorage.setItem('gdm-audio-preset', this.audioPreset);
     
     // Apply preset values
     const presets: Record<string, {bass: number, treble: number}> = {
@@ -333,8 +344,8 @@ export class GdmLiveAudio extends LitElement {
     if (this.bassFilter) this.bassFilter.gain.value = this.bassGain;
     if (this.trebleFilter) this.trebleFilter.gain.value = this.trebleGain;
     
-    localStorage.setItem('gdm-bass', String(this.bassGain));
-    localStorage.setItem('gdm-treble', String(this.trebleGain));
+    debouncedStorage.setItem('gdm-bass', String(this.bassGain));
+    debouncedStorage.setItem('gdm-treble', String(this.trebleGain));
   }
 
   private initAudio() {
@@ -349,12 +360,25 @@ export class GdmLiveAudio extends LitElement {
   private async initClient() {
     this.initAudio();
 
-    this.client = new GoogleGenAI({
-      apiKey: process.env.GEMINI_API_KEY,
-    });
+    const apiKey = process.env.GEMINI_API_KEY;
+    if (!apiKey || apiKey.trim() === '') {
+      this.updateError('Clé API Gemini manquante. Veuillez configurer GEMINI_API_KEY dans votre fichier .env');
+      this.updateStatus('Erreur de configuration');
+      return;
+    }
 
-    // Filters already connected in constructor
-    await this.initSession();
+    try {
+      this.client = new GoogleGenAI({
+        apiKey: apiKey,
+      });
+
+      // Filters already connected in constructor
+      await this.initSession();
+    } catch (e) {
+      console.error('Erreur initialisation client:', e);
+      this.updateError('Erreur lors de l\'initialisation du client Gemini: ' + e.message);
+      this.updateStatus('Erreur');
+    }
   }
 
   private async initSession() {
@@ -531,7 +555,7 @@ CODE DE CONDUITE POUR ASSISTANT :
       } else if (!this.isRecording && this.sources.size === 0) {
         this.latency = Math.max(0, this.latency * 0.95);
       }
-      requestAnimationFrame(updateLatency);
+      this.latencyRAF.request(updateLatency);
     };
     updateLatency();
   }
@@ -555,7 +579,7 @@ CODE DE CONDUITE POUR ASSISTANT :
         this.inputLevel = Math.max(0, this.inputLevel * 0.9);
         this.outputLevel = Math.max(0, this.outputLevel * 0.9);
       }
-      requestAnimationFrame(updateLevels);
+      this.vuMeterRAF.request(updateLevels);
     };
     updateLevels();
   }
@@ -752,7 +776,7 @@ CODE DE CONDUITE POUR ASSISTANT :
 
 
   private initKeyboardShortcuts() {
-    document.addEventListener('keydown', (e) => {
+    this.keyboardHandler = (e: KeyboardEvent) => {
       // Ignore if typing in input/textarea
       const target = e.target as HTMLElement;
       if (target.tagName === 'INPUT' || target.tagName === 'TEXTAREA') {
@@ -797,7 +821,67 @@ CODE DE CONDUITE POUR ASSISTANT :
           this._downloadTranscript();
         }
       }
+    };
+    document.addEventListener('keydown', this.keyboardHandler);
+  }
+  
+  disconnectedCallback() {
+    super.disconnectedCallback();
+    
+    // Cleanup keyboard handler
+    if (this.keyboardHandler) {
+      document.removeEventListener('keydown', this.keyboardHandler);
+      this.keyboardHandler = null;
+    }
+    
+    // Cancel RAF loops
+    this.vuMeterRAF?.cancel();
+    this.latencyRAF?.cancel();
+    
+    // Flush pending localStorage writes
+    debouncedStorage.flush();
+    
+    // Cleanup audio resources
+    if (this.scriptProcessorNode) {
+      try {
+        this.scriptProcessorNode.disconnect();
+      } catch (e) {}
+      this.scriptProcessorNode = null;
+    }
+    
+    if (this.sourceNode) {
+      try {
+        this.sourceNode.disconnect();
+      } catch (e) {}
+      this.sourceNode = null;
+    }
+    
+    if (this.mediaStream) {
+      this.mediaStream.getTracks().forEach(track => track.stop());
+      this.mediaStream = null;
+    }
+    
+    // Stop all audio sources
+    this.sources.forEach(source => {
+      try {
+        source.stop();
+      } catch (e) {}
     });
+    this.sources.clear();
+    
+    // Close session
+    if (this.session) {
+      try {
+        (this.session as any).close?.();
+      } catch (e) {}
+      this.session = null;
+    }
+    
+    // Clear retry timeout
+    if (this.retryTimeout) {
+      clearTimeout(this.retryTimeout);
+      this.retryTimeout = null;
+    }
   }
   
   private _clearError() { 
