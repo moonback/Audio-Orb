@@ -21,7 +21,7 @@ export class GdmLiveAudio extends LitElement {
   @state() error = '';
   @state() showSettings = false;
   @state() selectedVoice = 'Orus';
-  @state() selectedStyle = 'Natural';
+  @state() selectedStyle = 'Naturel';
   @state() playbackRate = 1.0;
   @state() detune = 0;
   @state() memory = '';
@@ -70,7 +70,7 @@ export class GdmLiveAudio extends LitElement {
     super();
     // Load settings from local storage
     this.selectedVoice = localStorage.getItem('gdm-voice') || 'Orus';
-    this.selectedStyle = localStorage.getItem('gdm-style') || 'Natural';
+    this.selectedStyle = localStorage.getItem('gdm-style') || 'Naturel';
     this.playbackRate = parseFloat(localStorage.getItem('gdm-rate') || '1.0');
     this.detune = parseFloat(localStorage.getItem('gdm-detune') || '0');
     this.memory = localStorage.getItem('gdm-memory') || '';
@@ -122,7 +122,7 @@ export class GdmLiveAudio extends LitElement {
     }
 
     if (needReset) {
-      this.updateStatus('Updating settings...');
+      this.updateStatus('Mise à jour des paramètres...');
       this.reset();
     }
   }
@@ -152,11 +152,11 @@ export class GdmLiveAudio extends LitElement {
     this.currentSessionTranscript = [];
 
     const currentPersonality = this.personalityManager.getById(this.selectedPersonalityId) || this.personalityManager.getAll()[0];
-    let systemInstruction = `${currentPersonality.prompt} Please speak with a ${this.selectedStyle} tone, accent, or style.`;
+    let systemInstruction = `${currentPersonality.prompt} Veuillez parler avec un ton, un accent ou un style ${this.selectedStyle}.`;
 
     // Inject Memory
     if (this.memory && this.memory.trim().length > 0) {
-      systemInstruction += `\n\nINFORMATION ABOUT THE USER (MEMORY):\n${this.memory}\n\nUse this information to personalize the conversation, but do not explicitly repeat it unless asked.`;
+      systemInstruction += `\n\nINFORMATIONS SUR L'UTILISATEUR (MÉMOIRE) :\n${this.memory}\n\nUtilisez ces informations pour personnaliser la conversation, mais ne les répétez pas explicitement sauf si on vous le demande.`;
     }
 
     const config: any = {
@@ -175,7 +175,7 @@ export class GdmLiveAudio extends LitElement {
         model: model,
         callbacks: {
           onopen: () => {
-            this.updateStatus('Ready');
+            this.updateStatus('Prêt');
           },
           onmessage: async (message: LiveServerMessage) => {
             // Handle Audio
@@ -235,7 +235,7 @@ export class GdmLiveAudio extends LitElement {
             this.updateError(e.message);
           },
           onclose: (e: CloseEvent) => {
-            this.updateStatus('Disconnected');
+            this.updateStatus('Déconnecté');
           },
         },
         config: config,
@@ -261,7 +261,7 @@ export class GdmLiveAudio extends LitElement {
 
     this.inputAudioContext.resume();
 
-    this.updateStatus('Requesting microphone...');
+    this.updateStatus('Demande d\'accès au microphone...');
 
     try {
       this.mediaStream = await navigator.mediaDevices.getUserMedia({
@@ -269,7 +269,7 @@ export class GdmLiveAudio extends LitElement {
         video: false,
       });
 
-      this.updateStatus('Listening...');
+      this.updateStatus('Écoute...');
 
       this.sourceNode = this.inputAudioContext.createMediaStreamSource(
         this.mediaStream,
@@ -299,7 +299,7 @@ export class GdmLiveAudio extends LitElement {
       this.isRecording = true;
     } catch (err) {
       console.error('Error starting recording:', err);
-      this.updateStatus(`Error: ${err.message}`);
+      this.updateStatus(`Erreur : ${err.message}`);
       this.stopRecording();
     }
   }
@@ -308,7 +308,7 @@ export class GdmLiveAudio extends LitElement {
     if (!this.isRecording && !this.mediaStream && !this.inputAudioContext)
       return;
 
-    this.updateStatus('Stopped');
+    this.updateStatus('Arrêté');
 
     this.isRecording = false;
 
@@ -333,23 +333,23 @@ export class GdmLiveAudio extends LitElement {
     if (this.currentSessionTranscript.length === 0) return;
     
     this.isProcessingMemory = true;
-    this.updateStatus('Consolidating Memory...');
+    this.updateStatus('Consolidation de la mémoire...');
 
     try {
       const transcriptText = this.currentSessionTranscript.join('\n');
       const prompt = `
-      I have a long-term memory of a user and a new conversation transcript. 
-      Please update the memory by adding new important facts, preferences, or context found in the transcript. 
-      Keep the memory concise and bulleted. Do not repeat existing facts. 
-      If the memory is empty, create a new one.
+      J'ai une mémoire à long terme d'un utilisateur et une nouvelle transcription de conversation. 
+      Veuillez mettre à jour la mémoire en ajoutant de nouveaux faits importants, préférences ou contexte trouvés dans la transcription. 
+      Gardez la mémoire concise et sous forme de puces. Ne répétez pas les faits existants. 
+      Si la mémoire est vide, créez-en une nouvelle.
 
-      EXISTING MEMORY:
-      ${this.memory || "(Empty)"}
+      MÉMOIRE EXISTANTE :
+      ${this.memory || "(Vide)"}
 
-      NEW TRANSCRIPT:
+      NOUVELLE TRANSCRIPTION :
       ${transcriptText}
 
-      UPDATED MEMORY:
+      MÉMOIRE MISE À JOUR :
       `;
 
       const response = await this.client.models.generateContent({
@@ -365,7 +365,7 @@ export class GdmLiveAudio extends LitElement {
       console.error("Failed to update memory", e);
     } finally {
       this.isProcessingMemory = false;
-      this.updateStatus('Ready');
+      this.updateStatus('Prêt');
       this.reset(); // Re-init session to inject new memory
     }
   }

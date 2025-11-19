@@ -3,13 +3,13 @@ import {customElement, property, state} from 'lit/decorators.js';
 import {Personality} from '../personality';
 
 const VOICES = ['Orus', 'Puck', 'Charon', 'Kore', 'Fenrir', 'Zephyr', 'Aoede'];
-const STYLES = ['Natural', 'Professional', 'Cheerful', 'British Accent', 'French Accent', 'Whispering', 'Enthusiastic'];
+const STYLES = ['Naturel', 'Professionnel', 'Joyeux', 'Accent britannique', 'Accent français', 'Chuchotement', 'Enthousiaste'];
 
 @customElement('settings-panel')
 export class SettingsPanel extends LitElement {
   @property({type: Boolean}) show = false;
   @property({type: String}) selectedVoice = 'Orus';
-  @property({type: String}) selectedStyle = 'Natural';
+  @property({type: String}) selectedStyle = 'Naturel';
   @property({type: Number}) playbackRate = 1.0;
   @property({type: Number}) detune = 0;
   @property({type: String}) memory = '';
@@ -343,7 +343,7 @@ export class SettingsPanel extends LitElement {
       <div class="settings-overlay" @click=${(e: Event) => e.target === e.currentTarget && this._close()}>
         <div class="settings-panel">
           <div class="settings-header">
-            <h2>Settings</h2>
+            <h2>Paramètres</h2>
             <button @click=${this._close}>
               <svg xmlns="http://www.w3.org/2000/svg" height="24px" viewBox="0 -960 960 960" width="24px" fill="#ffffff"><path d="m256-200-56-56 224-224-224-224 56-56 224 224 224-224 56 56-224 224 224 224-56 56-224-224-224 224Z"/></svg>
             </button>
@@ -352,9 +352,9 @@ export class SettingsPanel extends LitElement {
           <!-- Personalities Section -->
            <div class="setting-group">
             <label class="setting-label">
-              <span>AI Personality</span>
+              <span>Personnalité IA</span>
               ${this.selectedPersonalityId.startsWith('custom_') ? html`
-                <button class="btn-icon" title="Delete Personality" @click=${() => this._dispatch('delete-personality', this.selectedPersonalityId)}>
+                <button class="btn-icon" title="Supprimer la personnalité" @click=${() => this._dispatch('delete-personality', this.selectedPersonalityId)}>
                   🗑️
                 </button>
               ` : ''}
@@ -362,41 +362,41 @@ export class SettingsPanel extends LitElement {
             <select @change=${(e: any) => this._dispatch('personality-changed', e.target.value)}>
               ${this.personalities.map(p => html`
                 <option value=${p.id} ?selected=${this.selectedPersonalityId === p.id}>
-                  ${p.name} ${p.isCustom ? '(Custom)' : ''}
+                  ${p.name} ${p.isCustom ? '(Personnalisée)' : ''}
                 </option>
               `)}
             </select>
             
             ${!this.isCreatingPersonality ? html`
               <button class="btn-small" @click=${() => this.isCreatingPersonality = true}>
-                + Create New Personality
+                + Créer une nouvelle personnalité
               </button>
             ` : html`
               <div class="creation-form">
-                <input type="text" placeholder="Name (e.g. Yoda)" 
+                <input type="text" placeholder="Nom (ex. Yoda)" 
                   .value=${this.newPersonalityName}
                   @input=${(e: any) => this.newPersonalityName = e.target.value}
                 >
-                <textarea class="prompt-input" placeholder="System Instructions (e.g. Speak like Yoda you must...)"
+                <textarea class="prompt-input" placeholder="Instructions système (ex. Parler comme Yoda tu dois...)"
                   .value=${this.newPersonalityPrompt}
                   @input=${(e: any) => this.newPersonalityPrompt = e.target.value}
                 ></textarea>
                 <div style="display: flex; gap: 8px;">
-                  <button class="btn-small" @click=${() => this.isCreatingPersonality = false}>Cancel</button>
-                  <button class="btn-small primary" @click=${this._savePersonality}>Save</button>
+                  <button class="btn-small" @click=${() => this.isCreatingPersonality = false}>Annuler</button>
+                  <button class="btn-small primary" @click=${this._savePersonality}>Enregistrer</button>
                 </div>
               </div>
             `}
           </div>
 
           <div class="setting-group">
-            <label class="setting-label">Long-term Memory</label>
-            <textarea class="memory-display" readonly>${this.memory || "No memory yet. Talk to me!"}</textarea>
-            <button class="btn-small" @click=${() => this._dispatch('clear-memory', null)}>Clear Memory</button>
+            <label class="setting-label">Mémoire à long terme</label>
+            <textarea class="memory-display" readonly>${this.memory || "Aucune mémoire pour le moment. Parlez-moi !"}</textarea>
+            <button class="btn-small" @click=${() => this._dispatch('clear-memory', null)}>Effacer la mémoire</button>
           </div>
 
           <div class="setting-group">
-            <label class="setting-label">Voice</label>
+            <label class="setting-label">Voix</label>
             <select @change=${(e: any) => this._dispatch('voice-changed', e.target.value)}>
               ${VOICES.map(voice => html`
                 <option value=${voice} ?selected=${this.selectedVoice === voice}>${voice}</option>
@@ -405,7 +405,7 @@ export class SettingsPanel extends LitElement {
           </div>
 
           <div class="setting-group">
-            <label class="setting-label">Style & Accent</label>
+            <label class="setting-label">Style et accent</label>
             <select @change=${(e: any) => this._dispatch('style-changed', e.target.value)}>
               ${STYLES.map(style => html`
                 <option value=${style} ?selected=${this.selectedStyle === style}>${style}</option>
@@ -415,7 +415,7 @@ export class SettingsPanel extends LitElement {
 
           <div class="setting-group">
             <label class="setting-label">
-              <span>Speed</span>
+              <span>Vitesse</span>
               <span class="setting-value">${this.playbackRate.toFixed(1)}x</span>
             </label>
             <input 
@@ -430,7 +430,7 @@ export class SettingsPanel extends LitElement {
 
           <div class="setting-group">
             <label class="setting-label">
-              <span>Pitch (Detune)</span>
+              <span>Hauteur (Détune)</span>
               <span class="setting-value">${this.detune} cents</span>
             </label>
             <input 
