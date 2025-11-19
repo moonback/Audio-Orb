@@ -24,6 +24,8 @@ export class GdmLiveAudio extends LitElement {
   @state() playbackRate = 1.0;
   @state() detune = 0;
   @state() isThinkingMode = false;
+  @state() memory = '';
+  @state() isProcessingMemory = false;
 
   private client: GoogleGenAI;
   private session: Session;
@@ -38,6 +40,9 @@ export class GdmLiveAudio extends LitElement {
   private sourceNode: AudioBufferSourceNode;
   private scriptProcessorNode: ScriptProcessorNode;
   private sources = new Set<AudioBufferSourceNode>();
+  
+  // Store the current session's text to summarize later
+  private currentSessionTranscript: string[] = [];
 
   static styles = css`
     :host {
@@ -53,6 +58,24 @@ export class GdmLiveAudio extends LitElement {
       text-align: center;
       color: white;
       text-shadow: 0 1px 4px rgba(0,0,0,0.5);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 8px;
+    }
+
+    .spinner {
+      display: inline-block;
+      width: 16px;
+      height: 16px;
+      border: 2px solid rgba(255,255,255,0.3);
+      border-radius: 50%;
+      border-top-color: #fff;
+      animation: spin 1s ease-in-out infinite;
+    }
+
+    @keyframes spin {
+      to { transform: rotate(360deg); }
     }
 
     .controls {
@@ -122,8 +145,23 @@ export class GdmLiveAudio extends LitElement {
       border-radius: 24px;
       padding: 32px;
       width: 320px;
+      max-height: 80vh;
+      overflow-y: auto;
       color: white;
       box-shadow: 0 20px 40px rgba(0,0,0,0.4);
+    }
+
+    /* Custom scrollbar for settings */
+    .settings-panel::-webkit-scrollbar {
+      width: 8px;
+    }
+    .settings-panel::-webkit-scrollbar-track {
+      background: rgba(255, 255, 255, 0.05);
+      border-radius: 4px;
+    }
+    .settings-panel::-webkit-scrollbar-thumb {
+      background: rgba(255, 255, 255, 0.2);
+      border-radius: 4px;
     }
 
     .settings-header {
@@ -251,6 +289,36 @@ export class GdmLiveAudio extends LitElement {
       margin-top: 4px;
       line-height: 1.4;
     }
+
+    textarea.memory-display {
+      width: 100%;
+      height: 100px;
+      background: rgba(0, 0, 0, 0.2);
+      border: 1px solid rgba(255, 255, 255, 0.1);
+      border-radius: 8px;
+      color: rgba(255, 255, 255, 0.7);
+      padding: 8px;
+      font-family: monospace;
+      font-size: 0.8rem;
+      resize: none;
+      box-sizing: border-box;
+    }
+
+    .btn-small {
+      background: rgba(255, 255, 255, 0.1);
+      border: 1px solid rgba(255, 255, 255, 0.2);
+      color: white;
+      padding: 6px 12px;
+      border-radius: 6px;
+      cursor: pointer;
+      font-size: 0.8rem;
+      margin-top: 8px;
+      width: 100%;
+    }
+    
+    .btn-small:hover {
+      background: rgba(255, 255, 255, 0.2);
+    }
   `;
 
   constructor() {
@@ -261,6 +329,7 @@ export class GdmLiveAudio extends LitElement {
     this.playbackRate = parseFloat(localStorage.getItem('gdm-rate') || '1.0');
     this.detune = parseFloat(localStorage.getItem('gdm-detune') || '0');
     this.isThinkingMode = localStorage.getItem('gdm-thinking') === 'true';
+    this.memory = localStorage.getItem('gdm-memory') || '';
     this.initClient();
   }
 
@@ -292,6 +361,12 @@ export class GdmLiveAudio extends LitElement {
       needReset = true;
     }
 
+    // If memory changes, we don't necessarily need to reset the session immediately,
+    // but it's saved to local storage.
+    if (changedProperties.has('memory')) {
+      localStorage.setItem('gdm-memory', this.memory);
+    }
+
     if (needReset) {
       this.updateStatus('Updating settings...');
       this.reset();
@@ -315,24 +390,35 @@ export class GdmLiveAudio extends LitElement {
   }
 
   private async initSession() {
-    const model = this.isThinkingMode 
-      ? 'gemini-3-pro-preview' 
-      : 'gemini-2.5-flash-native-audio-preview-09-2025';
+    // Always use the Live API compatible model. 
+    // gemini-3-pro-preview does not support the Live API WebSocket protocol directly in this configuration.
+    const model = 'gemini-2.5-flash-native-audio-preview-09-2025';
+
+    // Reset transcript for new session
+    this.currentSessionTranscript = [];
+
+    let systemInstruction = `You are a helpful AI assistant. Please speak with a ${this.selectedStyle} tone, accent, or style.`;
+
+    // Inject Memory
+    if (this.memory && this.memory.trim().length > 0) {
+      systemInstruction += `\n\nINFORMATION ABOUT THE USER (MEMORY):\n${this.memory}\n\nUse this information to personalize the conversation, but do not explicitly repeat it unless asked.`;
+    }
 
     const config: any = {
       responseModalities: [Modality.AUDIO],
       speechConfig: {
         voiceConfig: {prebuiltVoiceConfig: {voiceName: this.selectedVoice}},
       },
+      systemInstruction: systemInstruction,
+      // Corrected: Use empty objects for transcription to fix "Invalid Argument" errors
+      inputAudioTranscription: {},
+      outputAudioTranscription: {},
     };
 
-    // Use system instructions to control accent and style
-    if (this.selectedStyle && this.selectedStyle !== 'Natural') {
-      config.systemInstruction = `You are a helpful AI assistant. Please speak with a ${this.selectedStyle} tone, accent, or style.`;
-    }
-
     if (this.isThinkingMode) {
-      config.thinkingConfig = { thinkingBudget: 32768 };
+      // Thinking config is available for Gemini 2.5 series. 
+      // We limit budget to 24576 which is safer for Flash models.
+      config.thinkingConfig = { thinkingBudget: 24576 };
     }
 
     try {
@@ -343,6 +429,7 @@ export class GdmLiveAudio extends LitElement {
             this.updateStatus('Ready');
           },
           onmessage: async (message: LiveServerMessage) => {
+            // Handle Audio
             const audio =
               message.serverContent?.modelTurn?.parts[0]?.inlineData;
 
@@ -373,6 +460,17 @@ export class GdmLiveAudio extends LitElement {
               source.start(this.nextStartTime);
               this.nextStartTime = this.nextStartTime + (audioBuffer.duration / this.playbackRate);
               this.sources.add(source);
+            }
+
+            // Handle Transcription (for Memory)
+            const inputTrans = message.serverContent?.inputTranscription?.text;
+            if (inputTrans) {
+              this.currentSessionTranscript.push(`User: ${inputTrans}`);
+            }
+
+            const outputTrans = message.serverContent?.outputTranscription?.text;
+            if (outputTrans) {
+              this.currentSessionTranscript.push(`AI: ${outputTrans}`);
             }
 
             const interrupted = message.serverContent?.interrupted;
@@ -457,7 +555,7 @@ export class GdmLiveAudio extends LitElement {
     }
   }
 
-  private stopRecording() {
+  private async stopRecording() {
     if (!this.isRecording && !this.mediaStream && !this.inputAudioContext)
       return;
 
@@ -477,11 +575,71 @@ export class GdmLiveAudio extends LitElement {
       this.mediaStream.getTracks().forEach((track) => track.stop());
       this.mediaStream = null;
     }
+
+    // When stopping, try to update memory
+    this.updateMemoryFromSession();
+  }
+
+  private async updateMemoryFromSession() {
+    if (this.currentSessionTranscript.length === 0) return;
+    
+    this.isProcessingMemory = true;
+    this.updateStatus('Consolidating Memory...');
+
+    try {
+      const transcriptText = this.currentSessionTranscript.join('\n');
+      const prompt = `
+      I have a long-term memory of a user and a new conversation transcript. 
+      Please update the memory by adding new important facts, preferences, or context found in the transcript. 
+      Keep the memory concise and bulleted. Do not repeat existing facts. 
+      If the memory is empty, create a new one.
+
+      EXISTING MEMORY:
+      ${this.memory || "(Empty)"}
+
+      NEW TRANSCRIPT:
+      ${transcriptText}
+
+      UPDATED MEMORY:
+      `;
+
+      const response = await this.client.models.generateContent({
+        model: 'gemini-2.5-flash',
+        contents: prompt,
+      });
+
+      if (response.text) {
+        this.memory = response.text.trim();
+        localStorage.setItem('gdm-memory', this.memory);
+      }
+    } catch (e) {
+      console.error("Failed to update memory", e);
+    } finally {
+      this.isProcessingMemory = false;
+      this.updateStatus('Ready');
+      this.reset(); // Re-init session to inject new memory
+    }
+  }
+
+  private clearMemory() {
+    this.memory = '';
+    localStorage.removeItem('gdm-memory');
+    this.reset();
   }
 
   private reset() {
-    this.stopRecording();
-    this.session?.close();
+    // Close existing session properly
+    if (this.session) {
+      // Just in case, though session is often managed by the loop, 
+      // calling close ensures we don't have dangling connections if the user resets manually
+      // Note: Live API doesn't have an explicit 'disconnect' on the session object in all SDK versions, 
+      // but re-initializing handles it.
+    }
+    
+    if (this.isRecording) {
+       this.stopRecording();
+    }
+    
     this.initSession();
   }
 
@@ -503,7 +661,8 @@ export class GdmLiveAudio extends LitElement {
             ? html`
                 <button
                   id="startButton"
-                  @click=${this.startRecording}>
+                  @click=${this.startRecording}
+                  ?disabled=${this.isProcessingMemory}>
                   <svg
                     viewBox="0 0 100 100"
                     width="32px"
@@ -531,7 +690,7 @@ export class GdmLiveAudio extends LitElement {
            <button
             id="resetButton"
             @click=${this.reset}
-            ?disabled=${this.isRecording}>
+            ?disabled=${this.isRecording || this.isProcessingMemory}>
             <svg
               xmlns="http://www.w3.org/2000/svg"
               height="24px"
@@ -544,7 +703,10 @@ export class GdmLiveAudio extends LitElement {
           </button>
         </div>
 
-        <div id="status"> ${this.status} ${this.error ? `| ${this.error}` : ''} </div>
+        <div id="status"> 
+          ${this.isProcessingMemory ? html`<span class="spinner"></span>` : ''}
+          ${this.status} ${this.error ? `| ${this.error}` : ''} 
+        </div>
         <gdm-live-audio-visuals-3d
           .inputNode=${this.inputNode}
           .outputNode=${this.outputNode}></gdm-live-audio-visuals-3d>
@@ -572,8 +734,14 @@ export class GdmLiveAudio extends LitElement {
                   </label>
                 </label>
                 <div class="info-text">
-                  Uses Gemini 3 Pro for complex reasoning (Higher latency).
+                  Uses Gemini 2.5 Flash with thinking config (Higher latency).
                 </div>
+              </div>
+
+              <div class="setting-group">
+                <label class="setting-label">Long-term Memory</label>
+                <textarea class="memory-display" readonly>${this.memory || "No memory yet. Talk to me!"}</textarea>
+                <button class="btn-small" @click=${this.clearMemory}>Clear Memory</button>
               </div>
 
               <div class="setting-group">
