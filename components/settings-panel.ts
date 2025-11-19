@@ -1,6 +1,7 @@
 import {LitElement, css, html} from 'lit';
 import {customElement, property, state} from 'lit/decorators.js';
 import {Personality} from '../personality';
+import {StructuredMemory, MemoryCategory} from '../memory';
 
 const VOICES = ['Orus', 'Puck', 'Charon', 'Kore', 'Fenrir', 'Zephyr', 'Aoede'];
 const STYLES = ['Naturel', 'Professionnel', 'Joyeux', 'Accent britannique', 'Accent français', 'Chuchotement', 'Enthousiaste'];
@@ -13,6 +14,7 @@ export class SettingsPanel extends LitElement {
   @property({type: Number}) playbackRate = 1.0;
   @property({type: Number}) detune = 0;
   @property({type: String}) memory = '';
+  @property({type: Object}) structuredMemory: StructuredMemory = {preferences: [], facts: [], context: []};
   
   // Personality Props
   @property({type: Array}) personalities: Personality[] = [];
@@ -330,6 +332,126 @@ export class SettingsPanel extends LitElement {
         color: var(--danger-color);
     }
     
+    .btn-icon-small {
+      background: transparent;
+      border: none;
+      cursor: pointer;
+      color: var(--text-dim);
+      font-size: 1.2rem;
+      padding: 2px 6px;
+      border-radius: 4px;
+      transition: all 0.2s;
+      line-height: 1;
+    }
+    
+    .btn-icon-small:hover {
+      background: rgba(255, 138, 128, 0.2);
+      color: var(--danger-color);
+    }
+    
+    .memory-categories {
+      display: flex;
+      flex-direction: column;
+      gap: 16px;
+      margin-bottom: 16px;
+      max-height: 300px;
+      overflow-y: auto;
+    }
+    
+    .memory-categories::-webkit-scrollbar {
+      width: 6px;
+    }
+    
+    .memory-categories::-webkit-scrollbar-thumb {
+      background: rgba(255, 255, 255, 0.15);
+      border-radius: 3px;
+    }
+    
+    .memory-category {
+      background: rgba(0, 0, 0, 0.2);
+      border-radius: 12px;
+      padding: 12px;
+      border: 1px solid rgba(255, 255, 255, 0.05);
+    }
+    
+    .category-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 8px;
+      padding-bottom: 8px;
+      border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+    }
+    
+    .category-title {
+      font-weight: 600;
+      font-size: 0.85rem;
+      color: var(--primary-color);
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+    }
+    
+    .category-count {
+      background: rgba(138, 180, 248, 0.2);
+      color: var(--primary-color);
+      padding: 2px 8px;
+      border-radius: 10px;
+      font-size: 0.75rem;
+      font-weight: 600;
+    }
+    
+    .memory-items {
+      display: flex;
+      flex-direction: column;
+      gap: 6px;
+    }
+    
+    .memory-item {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      padding: 8px 12px;
+      background: rgba(255, 255, 255, 0.03);
+      border-radius: 8px;
+      font-size: 0.85rem;
+      line-height: 1.4;
+      transition: background 0.2s;
+    }
+    
+    .memory-item:hover {
+      background: rgba(255, 255, 255, 0.06);
+    }
+    
+    .memory-item span {
+      flex: 1;
+      color: var(--text-main);
+    }
+    
+    .memory-empty {
+      text-align: center;
+      padding: 24px;
+      color: var(--text-dim);
+      font-size: 0.9rem;
+      font-style: italic;
+    }
+    
+    .memory-actions {
+      display: flex;
+      gap: 8px;
+      margin-top: 12px;
+    }
+    
+    .memory-actions .btn-small {
+      flex: 1;
+      margin-top: 0;
+    }
+    
+    .memory-actions label.btn-small {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+    
     .creation-form {
       margin-top: 20px;
       padding-top: 20px;
@@ -360,6 +482,22 @@ export class SettingsPanel extends LitElement {
       this.newPersonalityName = '';
       this.newPersonalityPrompt = '';
     }
+  }
+
+  private _exportMemory() {
+    this._dispatch('export-memory', null);
+  }
+
+  private _handleImportMemory(e: Event) {
+    const input = e.target as HTMLInputElement;
+    if (input.files && input.files[0]) {
+      this._dispatch('import-memory', input.files[0]);
+      input.value = ''; // Reset input
+    }
+  }
+
+  private _deleteMemoryItem(category: MemoryCategory, id: string) {
+    this._dispatch('delete-memory-item', {category, id});
   }
 
   render() {
@@ -422,10 +560,82 @@ export class SettingsPanel extends LitElement {
                 <span>Mémoire à long terme</span>
                 <span class="setting-value" style="font-size: 0.7rem; cursor: help" title="Ce que l'IA a appris de vous">?</span>
             </label>
-            <textarea class="memory-display" readonly placeholder="Aucune mémoire pour le moment. Parlez-moi !">${this.memory}</textarea>
-            <button class="btn-small danger" @click=${() => this._dispatch('clear-memory', null)}>
-                🗑️ Effacer la mémoire
-            </button>
+            
+            <!-- Memory Categories -->
+            <div class="memory-categories">
+              ${this.structuredMemory.preferences.length > 0 ? html`
+                <div class="memory-category">
+                  <div class="category-header">
+                    <span class="category-title">📋 Préférences</span>
+                    <span class="category-count">${this.structuredMemory.preferences.length}</span>
+                  </div>
+                  <div class="memory-items">
+                    ${this.structuredMemory.preferences.map(item => html`
+                      <div class="memory-item">
+                        <span>${item.content}</span>
+                        <button class="btn-icon-small" @click=${() => this._deleteMemoryItem('preferences', item.id)} title="Supprimer">×</button>
+                      </div>
+                    `)}
+                  </div>
+                </div>
+              ` : ''}
+              
+              ${this.structuredMemory.facts.length > 0 ? html`
+                <div class="memory-category">
+                  <div class="category-header">
+                    <span class="category-title">ℹ️ Faits</span>
+                    <span class="category-count">${this.structuredMemory.facts.length}</span>
+                  </div>
+                  <div class="memory-items">
+                    ${this.structuredMemory.facts.map(item => html`
+                      <div class="memory-item">
+                        <span>${item.content}</span>
+                        <button class="btn-icon-small" @click=${() => this._deleteMemoryItem('facts', item.id)} title="Supprimer">×</button>
+                      </div>
+                    `)}
+                  </div>
+                </div>
+              ` : ''}
+              
+              ${this.structuredMemory.context.length > 0 ? html`
+                <div class="memory-category">
+                  <div class="category-header">
+                    <span class="category-title">🌍 Contexte</span>
+                    <span class="category-count">${this.structuredMemory.context.length}</span>
+                  </div>
+                  <div class="memory-items">
+                    ${this.structuredMemory.context.map(item => html`
+                      <div class="memory-item">
+                        <span>${item.content}</span>
+                        <button class="btn-icon-small" @click=${() => this._deleteMemoryItem('context', item.id)} title="Supprimer">×</button>
+                      </div>
+                    `)}
+                  </div>
+                </div>
+              ` : ''}
+              
+              ${this.structuredMemory.preferences.length === 0 && 
+                this.structuredMemory.facts.length === 0 && 
+                this.structuredMemory.context.length === 0 ? html`
+                <div class="memory-empty">
+                  Aucune mémoire pour le moment. Parlez-moi pour que je m'en souvienne !
+                </div>
+              ` : ''}
+            </div>
+            
+            <!-- Memory Actions -->
+            <div class="memory-actions">
+              <button class="btn-small" @click=${this._exportMemory} title="Exporter la mémoire en JSON">
+                📥 Exporter
+              </button>
+              <label class="btn-small" style="cursor: pointer;">
+                📤 Importer
+                <input type="file" accept=".json" style="display: none;" @change=${this._handleImportMemory}>
+              </label>
+              <button class="btn-small danger" @click=${() => this._dispatch('clear-memory', null)}>
+                🗑️ Effacer
+              </button>
+            </div>
           </div>
 
           <div class="setting-group">

@@ -57,10 +57,10 @@ Ce document présente le plan de développement futur d'Audio Orb, depuis le MVP
   - [ ] Upload de voix personnalisées (si supporté par Gemini)
 
 ### 2.2 Intelligence & Mémoire
-- [ ] **Mémoire structurée**
-  - [ ] Catégorisation (préférences vs faits vs contexte)
+- [x] **Mémoire structurée**
+  - [x] Catégorisation (préférences vs faits vs contexte)
   - [ ] Recherche sémantique dans la mémoire
-  - [ ] Export/import de la mémoire (JSON)
+  - [x] Export/import de la mémoire (JSON)
 - [ ] **Intégrations**
   - [ ] Connexion calendrier ou notes (Notion/Google Keep) via Function Calling
 

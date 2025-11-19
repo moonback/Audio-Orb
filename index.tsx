@@ -9,6 +9,7 @@ import {LitElement, css, html, PropertyValues} from 'lit';
 import {customElement, state} from 'lit/decorators.js';
 import {createBlob, decode, decodeAudioData} from './utils';
 import {Personality, PersonalityManager} from './personality';
+import {MemoryManager, StructuredMemory, MemoryCategory} from './memory';
 import './components/settings-panel';
 import './components/control-panel';
 import './components/status-display';
@@ -28,6 +29,7 @@ export class GdmLiveAudio extends LitElement {
   @state() playbackRate = 1.0;
   @state() detune = 0;
   @state() memory = '';
+  @state() structuredMemory: StructuredMemory = {preferences: [], facts: [], context: []};
   @state() isProcessingMemory = false;
   
   // Audio Equalizer State
@@ -50,6 +52,7 @@ export class GdmLiveAudio extends LitElement {
   private client: GoogleGenAI;
   private session: Session;
   private personalityManager = new PersonalityManager();
+  private memoryManager = new MemoryManager();
 
   private inputAudioContext = new (window.AudioContext ||
     (window as any).webkitAudioContext)({sampleRate: 16000});
@@ -216,7 +219,9 @@ export class GdmLiveAudio extends LitElement {
     this.selectedStyle = localStorage.getItem('gdm-style') || 'Naturel';
     this.playbackRate = parseFloat(localStorage.getItem('gdm-rate') || '1.0');
     this.detune = parseFloat(localStorage.getItem('gdm-detune') || '0');
-    this.memory = localStorage.getItem('gdm-memory') || '';
+    // Load structured memory
+    this.structuredMemory = this.memoryManager.load();
+    this.memory = this.memoryManager.toText();
     this.bassGain = parseFloat(localStorage.getItem('gdm-bass') || '0');
     this.trebleGain = parseFloat(localStorage.getItem('gdm-treble') || '0');
     this.audioPreset = localStorage.getItem('gdm-audio-preset') || 'Personnalisé';
@@ -401,9 +406,10 @@ CODE DE CONDUITE POUR ASSISTANT :
     const currentPersonality = this.personalityManager.getById(this.selectedPersonalityId) || this.personalityManager.getAll()[0];
     let systemInstruction = `${currentPersonality.prompt} Veuillez parler avec un ton, un accent ou un style ${this.selectedStyle}.`;
 
-    // Inject Memory
-    if (this.memory && this.memory.trim().length > 0) {
-      systemInstruction += `\n\nINFORMATIONS SUR L'UTILISATEUR (MÉMOIRE) :\n${this.memory}\n\nUtilisez ces informations pour personnaliser la conversation, mais ne les répétez pas explicitement sauf si on vous le demande.`;
+    // Inject Memory (structured)
+    const memoryText = this.memoryManager.toText();
+    if (memoryText && memoryText.trim().length > 0) {
+      systemInstruction += `\n\nINFORMATIONS SUR L'UTILISATEUR (MÉMOIRE STRUCTURÉE) :\n${memoryText}\n\nUtilisez ces informations pour personnaliser la conversation, mais ne les répétez pas explicitement sauf si on vous le demande.`;
     }
 
     const config: any = {
@@ -634,31 +640,14 @@ CODE DE CONDUITE POUR ASSISTANT :
     this.updateStatus('Mémorisation...');
     try {
       const transcriptText = this.currentSessionTranscript.join('\n');
-      const prompt = `
-      J'ai une mémoire à long terme d'un utilisateur et une nouvelle transcription de conversation. 
-      Veuillez mettre à jour la mémoire en ajoutant de nouveaux faits importants, préférences ou contexte trouvés dans la transcription. 
-      Gardez la mémoire concise et sous forme de puces. Ne répétez pas les faits existants. 
-      Si la mémoire est vide, créez-en une nouvelle.
-
-      MÉMOIRE EXISTANTE :
-      ${this.memory || "(Vide)"}
-
-      NOUVELLE TRANSCRIPTION :
-      ${transcriptText}
-
-      MÉMOIRE MISE À JOUR :
-      `;
-
-      const response = await this.client.models.generateContent({
-        model: 'gemini-2.5-flash',
-        contents: prompt,
-      });
-      if (response.text) {
-        this.memory = response.text.trim();
-        localStorage.setItem('gdm-memory', this.memory);
-      }
+      await this.memoryManager.updateFromTranscript(transcriptText, this.client);
+      
+      // Update state
+      this.structuredMemory = this.memoryManager.load();
+      this.memory = this.memoryManager.toText();
     } catch (e) {
       console.error("Failed to update memory", e);
+      this.updateError("Erreur lors de la mémorisation");
     } 
     finally {
       this.isProcessingMemory = false;
@@ -668,9 +657,49 @@ CODE DE CONDUITE POUR ASSISTANT :
   }
 
   private clearMemory() {
+    this.memoryManager.clear();
+    this.structuredMemory = this.memoryManager.load();
     this.memory = '';
-    localStorage.removeItem('gdm-memory');
     this.reset();
+  }
+
+  private exportMemory() {
+    const json = this.memoryManager.export();
+    const blob = new Blob([json], { type: 'application/json' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `audio-orb-memory-${new Date().toISOString().slice(0,19).replace(/:/g,'-')}.json`;
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    URL.revokeObjectURL(url);
+    this.updateStatus("Mémoire exportée");
+  }
+
+  private async importMemory(file: File) {
+    try {
+      const text = await file.text();
+      const success = this.memoryManager.import(text);
+      if (success) {
+        this.structuredMemory = this.memoryManager.load();
+        this.memory = this.memoryManager.toText();
+        this.updateStatus("Mémoire importée");
+        this.reset();
+      } else {
+        this.updateError("Erreur lors de l'import de la mémoire");
+      }
+    } catch (e) {
+      console.error("Erreur import mémoire:", e);
+      this.updateError("Erreur lors de l'import de la mémoire");
+    }
+  }
+
+  private deleteMemoryItem(category: MemoryCategory, id: string) {
+    this.memoryManager.removeItem(category, id);
+    this.structuredMemory = this.memoryManager.load();
+    this.memory = this.memoryManager.toText();
+    this.updateStatus("Élément supprimé");
   }
 
   private async reset() {
@@ -851,8 +880,12 @@ CODE DE CONDUITE POUR ASSISTANT :
           .playbackRate=${this.playbackRate}
           .detune=${this.detune}
           .memory=${this.memory}
+          .structuredMemory=${this.structuredMemory}
           @close-settings=${this.toggleSettings}
           @clear-memory=${this.clearMemory}
+          @export-memory=${this.exportMemory}
+          @import-memory=${(e: CustomEvent) => this.importMemory(e.detail)}
+          @delete-memory-item=${(e: CustomEvent) => this.deleteMemoryItem(e.detail.category, e.detail.id)}
           @voice-changed=${this._handleVoiceChange}
           @style-changed=${this._handleStyleChange}
           @rate-changed=${this._handleRateChange}
