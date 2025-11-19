@@ -113,44 +113,41 @@ export class GdmLiveAudio extends LitElement {
     this.initClient();
   }
 
-  protected updated(changedProperties: PropertyValues) {
-    if (changedProperties.has('playbackRate') || changedProperties.has('detune')) {
-      for (const source of this.sources) {
-        source.playbackRate.value = this.playbackRate;
-        source.detune.value = this.detune;
-      }
-      // Save audio settings
-      localStorage.setItem('gdm-rate', String(this.playbackRate));
-      localStorage.setItem('gdm-detune', String(this.detune));
+  private _handleRateChange(e: CustomEvent) {
+    this.playbackRate = e.detail;
+    for (const source of this.sources) {
+      source.playbackRate.value = this.playbackRate;
     }
+    localStorage.setItem('gdm-rate', String(this.playbackRate));
+  }
 
-    let needReset = false;
+  private _handleDetuneChange(e: CustomEvent) {
+    this.detune = e.detail;
+    for (const source of this.sources) {
+      source.detune.value = this.detune;
+    }
+    localStorage.setItem('gdm-detune', String(this.detune));
+  }
 
-    if (changedProperties.has('selectedVoice')) {
-      localStorage.setItem('gdm-voice', this.selectedVoice);
-      needReset = true;
-    }
+  private _handleVoiceChange(e: CustomEvent) {
+    this.selectedVoice = e.detail;
+    localStorage.setItem('gdm-voice', this.selectedVoice);
+    this.updateStatus('Mise à jour des paramètres...');
+    this.reset();
+  }
 
-    if (changedProperties.has('selectedStyle')) {
-      localStorage.setItem('gdm-style', this.selectedStyle);
-      needReset = true;
-    }
-    
-    if (changedProperties.has('selectedPersonalityId')) {
-      localStorage.setItem('gdm-personality', this.selectedPersonalityId);
-      needReset = true;
-    }
+  private _handleStyleChange(e: CustomEvent) {
+    this.selectedStyle = e.detail;
+    localStorage.setItem('gdm-style', this.selectedStyle);
+    this.updateStatus('Mise à jour des paramètres...');
+    this.reset();
+  }
 
-    // If memory changes, we don't necessarily need to reset the session immediately,
-    // but it's saved to local storage.
-    if (changedProperties.has('memory')) {
-      localStorage.setItem('gdm-memory', this.memory);
-    }
-
-    if (needReset) {
-      this.updateStatus('Mise à jour des paramètres...');
-      this.reset();
-    }
+  private _handlePersonalityChange(e: CustomEvent) {
+    this.selectedPersonalityId = e.detail;
+    localStorage.setItem('gdm-personality', this.selectedPersonalityId);
+    this.updateStatus('Mise à jour des paramètres...');
+    this.reset();
   }
 
   private initAudio() {
@@ -533,11 +530,11 @@ export class GdmLiveAudio extends LitElement {
           .memory=${this.memory}
           @close-settings=${this.toggleSettings}
           @clear-memory=${this.clearMemory}
-          @voice-changed=${(e: CustomEvent) => this.selectedVoice = e.detail}
-          @style-changed=${(e: CustomEvent) => this.selectedStyle = e.detail}
-          @rate-changed=${(e: CustomEvent) => this.playbackRate = e.detail}
-          @detune-changed=${(e: CustomEvent) => this.detune = e.detail}
-          @personality-changed=${(e: CustomEvent) => this.selectedPersonalityId = e.detail}
+          @voice-changed=${this._handleVoiceChange}
+          @style-changed=${this._handleStyleChange}
+          @rate-changed=${this._handleRateChange}
+          @detune-changed=${this._handleDetuneChange}
+          @personality-changed=${this._handlePersonalityChange}
           @create-personality=${this._handleCreatePersonality}
           @delete-personality=${this._handleDeletePersonality}
         ></settings-panel>
