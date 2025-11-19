@@ -9,7 +9,6 @@ import {LitElement, css, html, PropertyValues} from 'lit';
 import {customElement, state} from 'lit/decorators.js';
 import {createBlob, decode, decodeAudioData} from './utils';
 import {Personality, PersonalityManager} from './personality';
-import './visual-3d';
 import './components/settings-panel';
 import './components/control-panel';
 import './components/status-display';
@@ -56,6 +55,7 @@ export class GdmLiveAudio extends LitElement {
   private sources = new Set<AudioBufferSourceNode>();
   
   // Store the current session's text to summarize later
+  @state()
   private currentSessionTranscript: string[] = [];
 
   // Audio analysers for VU meter
@@ -109,6 +109,71 @@ export class GdmLiveAudio extends LitElement {
       display: flex;
       justify-content: space-between;
       padding: 20px;
+    }
+
+    /* Chat Bubbles */
+    .chat-container {
+      flex: 1;
+      overflow-y: auto;
+      padding: 20px 20px 120px 20px; /* Bottom padding for control panel */
+      display: flex;
+      flex-direction: column;
+      gap: 16px;
+      max-width: 800px;
+      margin: 0 auto;
+      width: 100%;
+      height: 100%;
+      mask-image: linear-gradient(to bottom, transparent, black 10%, black 90%, transparent);
+      -webkit-mask-image: linear-gradient(to bottom, transparent, black 10%, black 90%, transparent);
+    }
+
+    .chat-bubble {
+      padding: 16px 24px;
+      border-radius: 24px;
+      max-width: 80%;
+      line-height: 1.5;
+      font-size: 16px;
+      animation: popIn 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+      box-shadow: 0 4px 15px rgba(0,0,0,0.1);
+    }
+
+    .chat-bubble.user {
+      align-self: flex-end;
+      background: linear-gradient(135deg, #6366f1, #3b82f6);
+      color: white;
+      border-bottom-right-radius: 4px;
+    }
+
+    .chat-bubble.ai {
+      align-self: flex-start;
+      background: rgba(255, 255, 255, 0.1);
+      backdrop-filter: blur(10px);
+      border: 1px solid rgba(255, 255, 255, 0.1);
+      color: #e8eaed;
+      border-bottom-left-radius: 4px;
+    }
+
+    @keyframes popIn {
+      from {
+        opacity: 0;
+        transform: translateY(20px) scale(0.9);
+      }
+      to {
+        opacity: 1;
+        transform: translateY(0) scale(1);
+      }
+    }
+
+    /* Scrollbar styling */
+    .chat-container::-webkit-scrollbar {
+      width: 6px;
+    }
+    .chat-container::-webkit-scrollbar-track {
+      background: transparent;
+    }
+    .chat-container::-webkit-scrollbar-thumb {
+      background: rgba(255, 255, 255, 0.2);
+      border-radius: 3px;
     }
   `;
 
@@ -311,12 +376,26 @@ CODE DE CONDUITE POUR ASSISTANT :
             // Handle Transcription (for Memory)
             const inputTrans = message.serverContent?.inputTranscription?.text;
             if (inputTrans) {
-              this.currentSessionTranscript.push(`User: ${inputTrans}`);
+              const lastIndex = this.currentSessionTranscript.length - 1;
+              if (lastIndex >= 0 && this.currentSessionTranscript[lastIndex].startsWith('User: ')) {
+                const updatedTranscript = [...this.currentSessionTranscript];
+                updatedTranscript[lastIndex] += inputTrans; // Append to existing bubble
+                this.currentSessionTranscript = updatedTranscript;
+              } else {
+                this.currentSessionTranscript = [...this.currentSessionTranscript, `User: ${inputTrans}`];
+              }
             }
 
             const outputTrans = message.serverContent?.outputTranscription?.text;
             if (outputTrans) {
-              this.currentSessionTranscript.push(`AI: ${outputTrans}`);
+              const lastIndex = this.currentSessionTranscript.length - 1;
+              if (lastIndex >= 0 && this.currentSessionTranscript[lastIndex].startsWith('AI: ')) {
+                const updatedTranscript = [...this.currentSessionTranscript];
+                updatedTranscript[lastIndex] += outputTrans; // Append to existing bubble
+                this.currentSessionTranscript = updatedTranscript;
+              } else {
+                this.currentSessionTranscript = [...this.currentSessionTranscript, `AI: ${outputTrans}`];
+              }
             }
 
             const interrupted = message.serverContent?.interrupted;
@@ -558,22 +637,37 @@ CODE DE CONDUITE POUR ASSISTANT :
     }
   }
 
+  updated(changedProperties: PropertyValues) {
+    if (changedProperties.has('currentSessionTranscript')) {
+      const chatContainer = this.shadowRoot?.getElementById('chatContainer');
+      if (chatContainer) {
+        chatContainer.scrollTop = chatContainer.scrollHeight;
+      }
+    }
+  }
+
   render() {
     return html`
-      <!-- 3D Visuals Background -->
-      <gdm-live-audio-visuals-3d
-        .inputNode=${this.inputNode}
-        .outputNode=${this.outputNode}
-      ></gdm-live-audio-visuals-3d>
-
       <!-- UI Overlay -->
-      <div class="ui-layer">
+      <div class="ui-layer" style="background: radial-gradient(circle at center, #1a1a2e 0%, #000000 100%);">
         <div class="top-bar">
            <!-- Latency & VU Meter could go here or be floating -->
            <latency-indicator
             .latency=${this.latency}
             .isActive=${this.isRecording || this.sources.size > 0}
           ></latency-indicator>
+        </div>
+
+        <div class="chat-container" id="chatContainer">
+          ${this.currentSessionTranscript.map(msg => {
+            const isUser = msg.startsWith('User: ');
+            const text = msg.replace(/^(User: |AI: )/, '');
+            return html`
+              <div class="chat-bubble ${isUser ? 'user' : 'ai'}">
+                ${text}
+              </div>
+            `;
+          })}
         </div>
 
         <status-display
