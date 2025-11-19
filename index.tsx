@@ -249,6 +249,11 @@ export class GdmLiveAudio extends LitElement {
     this.nextStartTime = this.outputAudioContext.currentTime;
   }
 
+  // Retry logic state
+  private retryCount = 0;
+  private maxRetries = 3;
+  private retryTimeout: any = null;
+
   private async initClient() {
     this.initAudio();
 
@@ -258,15 +263,22 @@ export class GdmLiveAudio extends LitElement {
 
     this.outputNode.connect(this.outputAudioContext.destination);
 
-    this.initSession();
+    await this.initSession();
   }
 
   private async initSession() {
     // Always use the Live API compatible model. 
     const model = 'gemini-2.5-flash-native-audio-preview-09-2025';
 
-    // Reset transcript for new session
-    this.currentSessionTranscript = [];
+    // Reset transcript for new session if it's a fresh start (not a retry)
+    if (this.retryCount === 0) {
+        this.currentSessionTranscript = [];
+        this.updateStatus('Prêt');
+    } else {
+        console.log(`Reconnexion... Tentative ${this.retryCount}/${this.maxRetries}`);
+        this.updateStatus(`Reconnexion (${this.retryCount})...`);
+    }
+
 
     // Code de conduite pour assistant (en dur dans le code)
     const CODE_DE_CONDUITE = `Tu t'appel NeuroChat 
@@ -409,16 +421,38 @@ CODE DE CONDUITE POUR ASSISTANT :
           },
           onerror: (e: ErrorEvent) => {
             this.updateError(e.message);
+            console.error("WebSocket Error:", e);
           },
           onclose: (e: CloseEvent) => {
             this.updateStatus('Déconnecté');
+            
+            // Attempt to reconnect if it was an abnormal closure and we were recording
+            if (this.isRecording && this.retryCount < this.maxRetries) {
+                this.retryCount++;
+                this.retryTimeout = setTimeout(() => {
+                    this.initSession();
+                }, 2000);
+            } else {
+                this.isRecording = false;
+                this.retryCount = 0;
+            }
           },
         },
         config: config,
       });
+      
+      // Successful connection resets retries
+      this.retryCount = 0;
+      
     } catch (e) {
       console.error(e);
-      this.updateError(e.message);
+      this.updateError("Erreur de connexion: " + e.message);
+      
+      // Retry on initial connection failure too
+      if (this.retryCount < this.maxRetries) {
+        this.retryCount++;
+        this.retryTimeout = setTimeout(() => this.initSession(), 3000);
+      }
     }
   }
 
@@ -603,16 +637,27 @@ CODE DE CONDUITE POUR ASSISTANT :
     this.reset();
   }
 
-  private reset() {
+  private async reset() {
     // Close existing session properly
     if (this.session) {
-      // Just in case, though session is often managed by the loop, 
-      // calling close ensures we don't have dangling connections if the user resets manually
+      // Clean up WebSocket connection if possible
+      try {
+         // Note: The SDK might not expose a direct close on session, 
+         // but usually re-initializing handles it. 
+         // If there is a close method, call it.
+         (this.session as any).close?.();
+      } catch (e) {
+        console.warn("Error closing session", e);
+      }
+      this.session = null;
     }
     
     if (this.isRecording) {
-       this.stopRecording();
+       await this.stopRecording();
     }
+
+    // Force reset retry count so initSession clears the transcript
+    this.retryCount = 0;
     
     this.initSession();
   }
@@ -635,6 +680,31 @@ CODE DE CONDUITE POUR ASSISTANT :
     if (this.selectedPersonalityId === id) {
       this.selectedPersonalityId = 'assistant'; // Fallback
     }
+  }
+
+  private _downloadTranscript() {
+    if (this.currentSessionTranscript.length === 0) {
+      this.updateError("Rien à télécharger");
+      return;
+    }
+
+    const text = this.currentSessionTranscript.join('\n\n');
+    const blob = new Blob([text], { type: 'text/plain' });
+    const url = URL.createObjectURL(blob);
+    
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `audio-orb-session-${new Date().toISOString().slice(0,19).replace(/:/g,'-')}.txt`;
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    URL.revokeObjectURL(url);
+    
+    this.updateStatus("Conversation téléchargée");
+  }
+
+  private _clearError() {
+    this.error = '';
   }
 
   updated(changedProperties: PropertyValues) {
@@ -674,6 +744,7 @@ CODE DE CONDUITE POUR ASSISTANT :
           .status=${this.status}
           .error=${this.error}
           .isProcessing=${this.isProcessingMemory}
+          @clear-error=${this._clearError}
         ></status-display>
 
         <control-panel
@@ -683,6 +754,7 @@ CODE DE CONDUITE POUR ASSISTANT :
           @start-recording=${this.startRecording}
           @stop-recording=${this.stopRecording}
           @reset=${this.reset}
+          @download-transcript=${this._downloadTranscript}
         ></control-panel>
 
         <settings-panel

@@ -16,6 +16,7 @@ export class LatencyIndicator extends LitElement {
       flex-direction: column;
       gap: 8px;
       font-family: 'Google Sans', Roboto, sans-serif;
+      transition: opacity 0.3s ease;
     }
 
     .container {
@@ -24,14 +25,15 @@ export class LatencyIndicator extends LitElement {
       border: 1px solid var(--glass-border, rgba(255, 255, 255, 0.1));
       border-radius: 12px;
       padding: 12px 16px;
-      min-width: 200px;
+      min-width: 180px;
       box-shadow: 0 4px 16px rgba(0, 0, 0, 0.2);
+      transition: border-color 0.3s ease;
     }
 
     .label {
       font-size: 0.75rem;
       color: var(--text-dim, rgba(255, 255, 255, 0.5));
-      margin-bottom: 6px;
+      margin-bottom: 8px;
       display: flex;
       justify-content: space-between;
       align-items: center;
@@ -40,124 +42,91 @@ export class LatencyIndicator extends LitElement {
     .value {
       font-size: 0.85rem;
       color: var(--text-main, rgba(255, 255, 255, 0.9));
-      font-weight: 500;
+      font-weight: 600;
+      font-variant-numeric: tabular-nums;
     }
 
     .progress-bar-container {
       width: 100%;
-      height: 6px;
+      height: 4px;
       background: rgba(255, 255, 255, 0.1);
-      border-radius: 3px;
+      border-radius: 2px;
       overflow: hidden;
       position: relative;
     }
 
     .progress-bar {
       height: 100%;
-      background: linear-gradient(90deg, 
-        var(--primary-color, #a8a8ff) 0%, 
-        #6b6bff 50%, 
-        #4a4aff 100%);
-      border-radius: 3px;
-      transition: width 0.3s ease;
+      background: var(--indicator-color, #a8a8ff);
+      border-radius: 2px;
+      transition: width 0.2s cubic-bezier(0.4, 0, 0.2, 1), background 0.3s ease;
       position: relative;
       overflow: hidden;
+      box-shadow: 0 0 10px var(--indicator-color, #a8a8ff);
     }
 
-    .progress-bar::after {
-      content: '';
-      position: absolute;
-      top: 0;
-      left: 0;
-      right: 0;
-      bottom: 0;
-      background: linear-gradient(90deg, 
-        transparent 0%, 
-        rgba(255, 255, 255, 0.3) 50%, 
-        transparent 100%);
-      animation: shimmer 2s infinite;
-    }
-
-    @keyframes shimmer {
-      0% { transform: translateX(-100%); }
-      100% { transform: translateX(100%); }
-    }
-
+    /* Status dot pulse animation */
     .status-indicator {
       width: 8px;
       height: 8px;
       border-radius: 50%;
-      background: var(--primary-color, #a8a8ff);
+      background: var(--indicator-color, #a8a8ff);
+      box-shadow: 0 0 8px var(--indicator-color, #a8a8ff);
       animation: pulse 2s infinite;
     }
 
-    .status-indicator.excellent {
-      background: #4ade80;
-    }
-
-    .status-indicator.good {
-      background: #a8a8ff;
-    }
-
-    .status-indicator.fair {
-      background: #fbbf24;
-    }
-
-    .status-indicator.poor {
-      background: #f87171;
-    }
-
     @keyframes pulse {
-      0%, 100% { opacity: 1; }
-      50% { opacity: 0.5; }
-    }
-
-    .hidden {
-      display: none;
+      0% { transform: scale(0.95); opacity: 1; }
+      50% { transform: scale(1.1); opacity: 0.7; }
+      100% { transform: scale(0.95); opacity: 1; }
     }
   `;
 
   private getLatencyPercentage(): number {
-    // Latence optimale: 0-200ms = 0-50%
-    // Latence acceptable: 200-500ms = 50-75%
-    // Latence élevée: 500-1000ms = 75-95%
-    // Latence très élevée: >1000ms = 95-100%
-    if (this.latency <= 200) return (this.latency / 200) * 50;
-    if (this.latency <= 500) return 50 + ((this.latency - 200) / 300) * 25;
-    if (this.latency <= 1000) return 75 + ((this.latency - 500) / 500) * 20;
-    return Math.min(95 + ((this.latency - 1000) / 1000) * 5, 100);
+    // Mapping non-linéaire pour une meilleure lisibilité
+    // 0-200ms -> 0-40% (Zone verte)
+    // 200-600ms -> 40-80% (Zone jaune)
+    // 600ms+ -> 80-100% (Zone rouge)
+    
+    if (this.latency <= 200) {
+      return (this.latency / 200) * 40;
+    } else if (this.latency <= 600) {
+      return 40 + ((this.latency - 200) / 400) * 40;
+    } else {
+      return Math.min(80 + ((this.latency - 600) / 400) * 20, 100);
+    }
   }
 
-  private getStatusClass(): string {
-    if (this.latency <= 200) return 'excellent';
-    if (this.latency <= 500) return 'good';
-    if (this.latency <= 1000) return 'fair';
-    return 'poor';
+  private getStatusColor(): string {
+    // Seuils de couleur plus stricts
+    if (this.latency <= 250) return '#4ade80'; // Vert (Excellent)
+    if (this.latency <= 600) return '#fbbf24'; // Jaune (Attention)
+    return '#f87171'; // Rouge (Mauvais)
   }
 
   private formatLatency(): string {
     if (this.latency < 1000) {
       return `${Math.round(this.latency)}ms`;
     }
-    return `${(this.latency / 1000).toFixed(1)}s`;
+    return `${(this.latency / 1000).toFixed(2)}s`;
   }
 
   render() {
-    if (!this.isActive) {
+    if (!this.isActive && this.latency === 0) {
       return html``;
     }
 
-    const percentage = this.getLatencyPercentage();
-    const statusClass = this.getStatusClass();
+    const percentage = Math.max(5, this.getLatencyPercentage()); // Min 5% visibility
+    const color = this.getStatusColor();
 
     return html`
-      <div class="container">
+      <div class="container" style="--indicator-color: ${color}">
         <div class="label">
-          <span>Latence</span>
-          <div style="display: flex; align-items: center; gap: 6px;">
-            <span class="status-indicator ${statusClass}"></span>
-            <span class="value">${this.formatLatency()}</span>
+          <div style="display: flex; align-items: center; gap: 8px;">
+             <div class="status-indicator"></div>
+             <span>Latence</span>
           </div>
+          <span class="value">${this.formatLatency()}</span>
         </div>
         <div class="progress-bar-container">
           <div class="progress-bar" style="width: ${percentage}%"></div>
@@ -172,4 +141,3 @@ declare global {
     'latency-indicator': LatencyIndicator;
   }
 }
-
