@@ -11,7 +11,6 @@ Ce document présente le plan de développement futur d'Audio Orb, depuis le MVP
 - ✅ Visualisation 3D audio-réactive (sphère + backdrop)
 - ✅ Contrôles audio (vitesse, pitch)
 - ✅ Mémoire long terme avec consolidation automatique
-- ✅ Mode Thinking (Gemini 2.5 Flash)
 - ✅ Interface de paramètres complète
 - ✅ Persistance des préférences (localStorage)
 
