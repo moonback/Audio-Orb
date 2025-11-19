@@ -18,30 +18,29 @@ Ce document présente le plan de développement futur d'Audio Orb, depuis le MVP
 ### 1.1 Expérience Utilisateur
 - [x] **Indicateurs visuels améliorés**
   - [x] Barre de progression pour la latence (Code couleur)
-  - [ ] Indicateur de niveau audio (VU meter plus précis)
-  - [ ] Animation de chargement pendant la consolidation mémoire
+  - [x] Indicateur de niveau audio (VU meter plus précis)
+  - [x] Animation de chargement pendant la consolidation mémoire
 - [x] **Gestion d'erreurs robuste**
   - [x] Messages d'erreur utilisateur-friendly (Toast notifications)
   - [x] Retry automatique en cas de déconnexion
   - [ ] Fallback si l'API est indisponible
-- [ ] **Accessibilité**
-  - [ ] Support clavier complet
-  - [ ] ARIA labels pour lecteurs d'écran
+- [x] **Accessibilité**
+  - [x] Support clavier complet (Espace: start/stop, S: settings, R: reset, D: download, Échap: fermer)
+  - [x] ARIA labels pour lecteurs d'écran
 
 ### 1.2 Performance & Optimisation
-- [ ] **Optimisation audio**
+- [x] **Optimisation audio**
   - [ ] Réduction de la latence (buffer adaptatif)
-  - [ ] Détection de silence pour économiser la bande passante API
+  - [x] Détection de silence pour économiser la bande passante API
 - [ ] **Optimisation 3D**
   - [ ] LOD (Level of Detail) dynamique selon le device
   - [ ] Réduction qualité sur appareils mobiles
 
 ### 1.3 Fonctionnalités Audio
-- [ ] **Égaliseur audio**
-  - [ ] Contrôles bass/treble
-  - [ ] Presets audio (voix, musique, etc.)
+- [x] **Égaliseur audio**
+  - [x] Contrôles bass/treble
+  - [x] Presets audio (Voix, Musique, Neutre, Bass Boost, Clarté)
 - [x] **Enregistrement de sessions**
-  - [ ] Export MP3/WAV des conversations
   - [x] Historique des sessions (Export .txt)
 
 ## 🚀 Phase 2 : Fonctionnalités Avancées (Moyen Terme)

@@ -198,15 +198,17 @@ export class ControlPanel extends LitElement {
     return html`
       <button
         @click=${this._downloadTranscript}
-        title="Télécharger la conversation"
+        title="Télécharger la conversation (D)"
+        aria-label="Télécharger la conversation"
         ?disabled=${this.isRecording}>
-        <svg xmlns="http://www.w3.org/2000/svg" height="24px" viewBox="0 -960 960 960" width="24px" fill="#ffffff"><path d="M480-320 280-520l56-58 104 104v-326h80v326l104-104 56 58-200 200ZM240-160q-33 0-56.5-23.5T160-240v-120h80v120h480v-120h80v120q0 33-23.5 56.5T720-160H240Z"/></svg>
+        <svg xmlns="http://www.w3.org/2000/svg" height="24px" viewBox="0 -960 960 960" width="24px" fill="#ffffff" aria-hidden="true"><path d="M480-320 280-520l56-58 104 104v-326h80v326l104-104 56 58-200 200ZM240-160q-33 0-56.5-23.5T160-240v-120h80v120h480v-120h80v120q0 33-23.5 56.5T720-160H240Z"/></svg>
       </button>
 
       <button
         @click=${this._toggleSettings}
-        title="Paramètres">
-        <svg xmlns="http://www.w3.org/2000/svg" height="24px" viewBox="0 -960 960 960" width="24px" fill="#ffffff"><path d="m370-80-16-128q-13-5-24.5-12T307-235l-119 50L78-375l103-78q-1-7-1-13.5v-27q0-6.5 1-13.5L78-585l110-190 119 50q11-8 23-15t24-12l16-128h220l16 128q13 5 24.5 12t22.5 15l119-50 110 190-103 78q1 7 1 13.5v27q0 6.5-1 13.5l103 78-110 190-119-50q-11 8-23 15t-24 12l-16 128H370Zm112-260q58 0 99-41t41-99q0-58-41-99t-99-41q-58 0-99 41t-41 99q0 58 41 99t99 41Z"/></svg>
+        title="Paramètres (S)"
+        aria-label="Ouvrir les paramètres">
+        <svg xmlns="http://www.w3.org/2000/svg" height="24px" viewBox="0 -960 960 960" width="24px" fill="#ffffff" aria-hidden="true"><path d="m370-80-16-128q-13-5-24.5-12T307-235l-119 50L78-375l103-78q-1-7-1-13.5v-27q0-6.5 1-13.5L78-585l110-190 119 50q11-8 23-15t24-12l16-128h220l16 128q13 5 24.5 12t22.5 15l119-50 110 190-103 78q1 7 1 13.5v27q0 6.5-1 13.5l103 78-110 190-119-50q-11 8-23 15t-24 12l-16 128H370Zm112-260q58 0 99-41t41-99q0-58-41-99t-99-41q-58 0-99 41t-41 99q0 58 41 99t99 41Z"/></svg>
       </button>
 
       ${!this.isRecording
@@ -215,12 +217,14 @@ export class ControlPanel extends LitElement {
               id="startButton"
               @click=${this._startRecording}
               ?disabled=${this.isProcessingMemory}
-              title="Démarrer la conversation">
+              title="Démarrer la conversation (Espace)"
+              aria-label="Démarrer l'enregistrement vocal">
               <svg
                 viewBox="0 0 100 100"
                 width="32px"
                 height="32px"
-                xmlns="http://www.w3.org/2000/svg">
+                xmlns="http://www.w3.org/2000/svg"
+                aria-hidden="true">
                 <path d="M50 15c-16.5 0-30 13.5-30 30v10c0 16.5 13.5 30 30 30s30-13.5 30-30V45c0-16.5-13.5-30-30-30zm0 65c-8.3 0-15-6.7-15-15V45c0-8.3 6.7-15 15-15s15 6.7 15 15v20c0 8.3-6.7 15-15 15z"/>
                 <path d="M20 55h-5c0 17.5 13 32 30 34.5V95h10v-5.5c17-2.5 30-17 30-34.5h-5c0 16.5-13.5 30-30 30S20 71.5 20 55z"/>
               </svg>
@@ -230,12 +234,15 @@ export class ControlPanel extends LitElement {
               id="stopButton"
               class="recording"
               @click=${this._stopRecording}
-              title="Arrêter">
+              title="Arrêter (Espace)"
+              aria-label="Arrêter l'enregistrement vocal"
+              aria-pressed="true">
               <svg
                 viewBox="0 0 100 100"
                 width="32px"
                 height="32px"
-                xmlns="http://www.w3.org/2000/svg">
+                xmlns="http://www.w3.org/2000/svg"
+                aria-hidden="true">
                 <rect x="30" y="30" width="40" height="40" rx="4" />
               </svg>
             </button>`}
@@ -244,13 +251,15 @@ export class ControlPanel extends LitElement {
         id="resetButton"
         @click=${this._reset}
         ?disabled=${this.isRecording || this.isProcessingMemory}
-        title="Réinitialiser la session">
+        title="Réinitialiser la session (R)"
+        aria-label="Réinitialiser la session">
         <svg
           xmlns="http://www.w3.org/2000/svg"
           height="24px"
           viewBox="0 -960 960 960"
           width="24px"
-          fill="#ffffff">
+          fill="#ffffff"
+          aria-hidden="true">
           <path
             d="M480-160q-134 0-227-93t-93-227q0-134 93-227t227-93q69 0 132 28.5T720-690v-110h80v280H520v-80h168q-32-56-87.5-88T480-720q-100 0-170 70t-70 170q0 100 70 170t170 70q77 0 139-44t87-116h84q-28 106-114 173t-196 67Z" />
         </svg>

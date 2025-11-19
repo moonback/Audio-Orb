@@ -30,6 +30,11 @@ export class GdmLiveAudio extends LitElement {
   @state() memory = '';
   @state() isProcessingMemory = false;
   
+  // Audio Equalizer State
+  @state() bassGain = 0; // -20 to +20 dB
+  @state() trebleGain = 0; // -20 to +20 dB
+  @state() audioPreset = 'Personnalisé';
+  
   // Zen Mode State
   @state() isFocusMode = false;
   
@@ -52,6 +57,8 @@ export class GdmLiveAudio extends LitElement {
     (window as any).webkitAudioContext)({sampleRate: 24000});
   @state() inputNode = this.inputAudioContext.createGain();
   @state() outputNode = this.outputAudioContext.createGain();
+  private bassFilter: BiquadFilterNode;
+  private trebleFilter: BiquadFilterNode;
   private nextStartTime = 0;
   private mediaStream: MediaStream;
   private sourceNode: AudioBufferSourceNode;
@@ -210,6 +217,9 @@ export class GdmLiveAudio extends LitElement {
     this.playbackRate = parseFloat(localStorage.getItem('gdm-rate') || '1.0');
     this.detune = parseFloat(localStorage.getItem('gdm-detune') || '0');
     this.memory = localStorage.getItem('gdm-memory') || '';
+    this.bassGain = parseFloat(localStorage.getItem('gdm-bass') || '0');
+    this.trebleGain = parseFloat(localStorage.getItem('gdm-treble') || '0');
+    this.audioPreset = localStorage.getItem('gdm-audio-preset') || 'Personnalisé';
     
     // Init Personalities
     this.personalities = this.personalityManager.getAll();
@@ -219,12 +229,29 @@ export class GdmLiveAudio extends LitElement {
       this.selectedPersonalityId = 'assistant';
     }
 
+    // Initialize audio filters
+    this.bassFilter = this.outputAudioContext.createBiquadFilter();
+    this.bassFilter.type = 'lowshelf';
+    this.bassFilter.frequency.value = 250;
+    this.bassFilter.gain.value = this.bassGain;
+    
+    this.trebleFilter = this.outputAudioContext.createBiquadFilter();
+    this.trebleFilter.type = 'highshelf';
+    this.trebleFilter.frequency.value = 4000;
+    this.trebleFilter.gain.value = this.trebleGain;
+    
+    // Connect filters: outputNode -> bass -> treble -> destination
+    this.outputNode.connect(this.bassFilter);
+    this.bassFilter.connect(this.trebleFilter);
+    this.trebleFilter.connect(this.outputAudioContext.destination);
+    
     this.inputAnalyser = new Analyser(this.inputNode);
     this.outputAnalyser = new Analyser(this.outputNode);
     
     this.startVUMeterUpdates();
     this.startLatencyUpdates();
     this.initClient();
+    this.initKeyboardShortcuts();
   }
 
   private _handleRateChange(e: CustomEvent) {
@@ -264,6 +291,47 @@ export class GdmLiveAudio extends LitElement {
     this.reset();
   }
 
+  private _handleBassChange(e: CustomEvent) {
+    this.bassGain = e.detail;
+    if (this.bassFilter) {
+      this.bassFilter.gain.value = this.bassGain;
+    }
+    localStorage.setItem('gdm-bass', String(this.bassGain));
+  }
+
+  private _handleTrebleChange(e: CustomEvent) {
+    this.trebleGain = e.detail;
+    if (this.trebleFilter) {
+      this.trebleFilter.gain.value = this.trebleGain;
+    }
+    localStorage.setItem('gdm-treble', String(this.trebleGain));
+  }
+
+  private _handleAudioPresetChange(e: CustomEvent) {
+    this.audioPreset = e.detail;
+    localStorage.setItem('gdm-audio-preset', this.audioPreset);
+    
+    // Apply preset values
+    const presets: Record<string, {bass: number, treble: number}> = {
+      'Personnalisé': {bass: this.bassGain, treble: this.trebleGain},
+      'Voix': {bass: 2, treble: 4},
+      'Musique': {bass: 6, treble: 3},
+      'Neutre': {bass: 0, treble: 0},
+      'Bass Boost': {bass: 10, treble: -2},
+      'Clarté': {bass: -2, treble: 8}
+    };
+    
+    const preset = presets[this.audioPreset] || presets['Neutre'];
+    this.bassGain = preset.bass;
+    this.trebleGain = preset.treble;
+    
+    if (this.bassFilter) this.bassFilter.gain.value = this.bassGain;
+    if (this.trebleFilter) this.trebleFilter.gain.value = this.trebleGain;
+    
+    localStorage.setItem('gdm-bass', String(this.bassGain));
+    localStorage.setItem('gdm-treble', String(this.trebleGain));
+  }
+
   private initAudio() {
     this.nextStartTime = this.outputAudioContext.currentTime;
   }
@@ -280,8 +348,7 @@ export class GdmLiveAudio extends LitElement {
       apiKey: process.env.GEMINI_API_KEY,
     });
 
-    this.outputNode.connect(this.outputAudioContext.destination);
-
+    // Filters already connected in constructor
     await this.initSession();
   }
 
@@ -487,6 +554,12 @@ CODE DE CONDUITE POUR ASSISTANT :
     updateLevels();
   }
 
+  // Silence detection
+  private silenceThreshold = 0.01; // Adjustable threshold
+  private silenceDuration = 0; // ms of silence
+  private lastSoundTime = 0;
+  private isSilent = false;
+
   private async startRecording() {
     if (this.isRecording) return;
     this.inputAudioContext.resume();
@@ -501,8 +574,27 @@ CODE DE CONDUITE POUR ASSISTANT :
         if (!this.isRecording) return;
         const inputBuffer = audioProcessingEvent.inputBuffer;
         const pcmData = inputBuffer.getChannelData(0);
-        this.lastAudioSendTime = performance.now();
-        this.session?.sendRealtimeInput({media: createBlob(pcmData)});
+        
+        // Silence detection
+        const rms = Math.sqrt(pcmData.reduce((sum, val) => sum + val * val, 0) / pcmData.length);
+        const currentTime = performance.now();
+        
+        if (rms > this.silenceThreshold) {
+          this.lastSoundTime = currentTime;
+          this.isSilent = false;
+          this.silenceDuration = 0;
+        } else {
+          this.silenceDuration = currentTime - this.lastSoundTime;
+          if (this.silenceDuration > 500) { // 500ms of silence
+            this.isSilent = true;
+          }
+        }
+        
+        // Only send audio if not silent (or if silence just ended)
+        if (!this.isSilent || this.silenceDuration < 100) {
+          this.lastAudioSendTime = performance.now();
+          this.session?.sendRealtimeInput({media: createBlob(pcmData)});
+        }
       };
       this.sourceNode.connect(this.scriptProcessorNode);
       this.scriptProcessorNode.connect(this.inputAudioContext.destination);
@@ -520,6 +612,9 @@ CODE DE CONDUITE POUR ASSISTANT :
     this.updateStatus('Arrêté');
     this.isRecording = false;
     this.lastAudioSendTime = 0;
+    this.isSilent = false;
+    this.silenceDuration = 0;
+    
     if (this.scriptProcessorNode && this.sourceNode && this.inputAudioContext) {
       this.scriptProcessorNode.disconnect();
       this.sourceNode.disconnect();
@@ -625,6 +720,56 @@ CODE DE CONDUITE POUR ASSISTANT :
     URL.revokeObjectURL(url);
     this.updateStatus("Conversation téléchargée");
   }
+
+
+  private initKeyboardShortcuts() {
+    document.addEventListener('keydown', (e) => {
+      // Ignore if typing in input/textarea
+      const target = e.target as HTMLElement;
+      if (target.tagName === 'INPUT' || target.tagName === 'TEXTAREA') {
+        return;
+      }
+      
+      // Space: Start/Stop recording
+      if (e.code === 'Space' && !e.repeat) {
+        e.preventDefault();
+        if (this.isRecording) {
+          this.stopRecording();
+        } else if (!this.isProcessingMemory) {
+          this.startRecording();
+        }
+      }
+      
+      // Escape: Close settings
+      if (e.code === 'Escape') {
+        if (this.showSettings) {
+          this.toggleSettings();
+        }
+      }
+      
+      // S: Toggle settings
+      if (e.code === 'KeyS' && !e.shiftKey && !e.ctrlKey && !e.metaKey) {
+        e.preventDefault();
+        this.toggleSettings();
+      }
+      
+      // R: Reset
+      if (e.code === 'KeyR' && !e.shiftKey && !e.ctrlKey && !e.metaKey) {
+        if (!this.isRecording && !this.isProcessingMemory) {
+          e.preventDefault();
+          this.reset();
+        }
+      }
+      
+      // D: Download transcript
+      if (e.code === 'KeyD' && !e.shiftKey && !e.ctrlKey && !e.metaKey) {
+        if (!this.isRecording) {
+          e.preventDefault();
+          this._downloadTranscript();
+        }
+      }
+    });
+  }
   
   private _clearError() { 
     this.error = ''; 
@@ -715,6 +860,12 @@ CODE DE CONDUITE POUR ASSISTANT :
           @personality-changed=${this._handlePersonalityChange}
           @create-personality=${this._handleCreatePersonality}
           @delete-personality=${this._handleDeletePersonality}
+          @bass-changed=${this._handleBassChange}
+          @treble-changed=${this._handleTrebleChange}
+          @audio-preset-changed=${this._handleAudioPresetChange}
+          .bassGain=${this.bassGain}
+          .trebleGain=${this.trebleGain}
+          .audioPreset=${this.audioPreset}
         ></settings-panel>
       </div>
     `;

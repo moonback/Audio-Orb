@@ -105,8 +105,8 @@ export class StatusDisplay extends LitElement {
 
     .processing-spinner {
       position: relative;
-      width: 18px;
-      height: 18px;
+      width: 24px;
+      height: 24px;
     }
 
     .processing-spinner::before {
@@ -114,10 +114,20 @@ export class StatusDisplay extends LitElement {
       position: absolute;
       inset: 0;
       border-radius: 50%;
-      border: 2px solid transparent;
+      border: 3px solid rgba(138, 180, 248, 0.2);
       border-top-color: #8ab4f8;
       border-right-color: #8ab4f8;
       animation: spin 1s cubic-bezier(0.4, 0, 0.2, 1) infinite;
+    }
+    
+    .processing-spinner::after {
+      content: '';
+      position: absolute;
+      inset: 4px;
+      border-radius: 50%;
+      border: 2px solid transparent;
+      border-top-color: rgba(138, 180, 248, 0.6);
+      animation: spin 0.6s linear infinite reverse;
     }
 
     .processing-text {
@@ -145,15 +155,15 @@ export class StatusDisplay extends LitElement {
       return html`
       <!-- Memory Processing Indicator -->
       ${this.isProcessing ? html`
-        <div class="processing-container">
-          <div class="processing-spinner"></div>
+        <div class="processing-container" role="status" aria-live="polite" aria-label="Traitement en cours">
+          <div class="processing-spinner" aria-hidden="true"></div>
           <div class="processing-text">
             ${this.status}...
           </div>
         </div>
       ` : html`
         <!-- Regular Status -->
-        <div class="status-badge">${this.status}</div>
+        <div class="status-badge" role="status" aria-live="polite">${this.status}</div>
       `}
 
       <!-- Error Toast -->

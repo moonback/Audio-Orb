@@ -17,6 +17,11 @@ export class SettingsPanel extends LitElement {
   // Personality Props
   @property({type: Array}) personalities: Personality[] = [];
   @property({type: String}) selectedPersonalityId = 'assistant';
+  
+  // Audio Equalizer Props
+  @property({type: Number}) bassGain = 0;
+  @property({type: Number}) trebleGain = 0;
+  @property({type: String}) audioPreset = 'Personnalisé';
 
   @state() isCreatingPersonality = false;
   @state() newPersonalityName = '';
@@ -365,8 +370,8 @@ export class SettingsPanel extends LitElement {
         <div class="settings-panel">
           <div class="settings-header">
             <h2>Paramètres</h2>
-            <button @click=${this._close}>
-              <svg xmlns="http://www.w3.org/2000/svg" height="24px" viewBox="0 -960 960 960" width="24px" fill="currentColor"><path d="m256-200-56-56 224-224-224-224 56-56 224 224 224-224 56 56-224 224 224 224-56 56-224-224-224 224Z"/></svg>
+            <button @click=${this._close} aria-label="Fermer les paramètres" title="Fermer (Échap)">
+              <svg xmlns="http://www.w3.org/2000/svg" height="24px" viewBox="0 -960 960 960" width="24px" fill="currentColor" aria-hidden="true"><path d="m256-200-56-56 224-224-224-224 56-56 224 224 224-224 56 56-224 224 224 224-56 56-224-224-224 224Z"/></svg>
             </button>
           </div>
 
@@ -380,7 +385,9 @@ export class SettingsPanel extends LitElement {
                 </button>
               ` : ''}
             </label>
-            <select @change=${(e: any) => this._dispatch('personality-changed', e.target.value)}>
+            <select 
+              @change=${(e: any) => this._dispatch('personality-changed', e.target.value)}
+              aria-label="Sélectionner une personnalité">
               ${this.personalities.map(p => html`
                 <option value=${p.id} ?selected=${this.selectedPersonalityId === p.id}>
                   ${p.name} ${p.isCustom ? '(Personnalisée)' : ''}
@@ -423,7 +430,9 @@ export class SettingsPanel extends LitElement {
 
           <div class="setting-group">
             <label class="setting-label">Voix du Synthétiseur</label>
-            <select @change=${(e: any) => this._dispatch('voice-changed', e.target.value)}>
+            <select 
+              @change=${(e: any) => this._dispatch('voice-changed', e.target.value)}
+              aria-label="Sélectionner une voix">
               ${VOICES.map(voice => html`
                 <option value=${voice} ?selected=${this.selectedVoice === voice}>${voice}</option>
               `)}
@@ -432,7 +441,9 @@ export class SettingsPanel extends LitElement {
 
           <div class="setting-group">
             <label class="setting-label">Style et accent</label>
-            <select @change=${(e: any) => this._dispatch('style-changed', e.target.value)}>
+            <select 
+              @change=${(e: any) => this._dispatch('style-changed', e.target.value)}
+              aria-label="Sélectionner un style">
               ${STYLES.map(style => html`
                 <option value=${style} ?selected=${this.selectedStyle === style}>${style}</option>
               `)}
@@ -451,6 +462,10 @@ export class SettingsPanel extends LitElement {
               step="0.1" 
               .value=${this.playbackRate}
               @input=${(e: any) => this._dispatch('rate-changed', parseFloat(e.target.value))}
+              aria-label="Vitesse de lecture"
+              aria-valuemin="0.5"
+              aria-valuemax="2.0"
+              aria-valuenow=${this.playbackRate}
             >
           </div>
 
@@ -466,7 +481,74 @@ export class SettingsPanel extends LitElement {
               step="100" 
               .value=${this.detune}
               @input=${(e: any) => this._dispatch('detune-changed', parseFloat(e.target.value))}
+              aria-label="Hauteur de la voix"
+              aria-valuemin="-1200"
+              aria-valuemax="1200"
+              aria-valuenow=${this.detune}
             >
+          </div>
+
+          <!-- Audio Equalizer Section -->
+          <div class="setting-group">
+            <label class="setting-label">
+              <span>Égaliseur Audio</span>
+            </label>
+            <select 
+              @change=${(e: any) => this._dispatch('audio-preset-changed', e.target.value)}
+              aria-label="Préréglage audio">
+              <option value="Personnalisé" ?selected=${this.audioPreset === 'Personnalisé'}>Personnalisé</option>
+              <option value="Voix" ?selected=${this.audioPreset === 'Voix'}>Voix</option>
+              <option value="Musique" ?selected=${this.audioPreset === 'Musique'}>Musique</option>
+              <option value="Neutre" ?selected=${this.audioPreset === 'Neutre'}>Neutre</option>
+              <option value="Bass Boost" ?selected=${this.audioPreset === 'Bass Boost'}>Bass Boost</option>
+              <option value="Clarté" ?selected=${this.audioPreset === 'Clarté'}>Clarté</option>
+            </select>
+            
+            <div style="margin-top: 16px;">
+              <label class="setting-label" style="margin-bottom: 8px;">
+                <span>Basses</span>
+                <span class="setting-value">${this.bassGain > 0 ? '+' : ''}${this.bassGain.toFixed(1)} dB</span>
+              </label>
+              <input 
+                type="range" 
+                min="-20" 
+                max="20" 
+                step="0.5" 
+                .value=${this.bassGain}
+                @input=${(e: any) => {
+                  this.bassGain = parseFloat(e.target.value);
+                  this.audioPreset = 'Personnalisé';
+                  this._dispatch('bass-changed', this.bassGain);
+                }}
+                aria-label="Niveau des basses"
+                aria-valuemin="-20"
+                aria-valuemax="20"
+                aria-valuenow=${this.bassGain}
+              >
+            </div>
+            
+            <div style="margin-top: 16px;">
+              <label class="setting-label" style="margin-bottom: 8px;">
+                <span>Aigus</span>
+                <span class="setting-value">${this.trebleGain > 0 ? '+' : ''}${this.trebleGain.toFixed(1)} dB</span>
+              </label>
+              <input 
+                type="range" 
+                min="-20" 
+                max="20" 
+                step="0.5" 
+                .value=${this.trebleGain}
+                @input=${(e: any) => {
+                  this.trebleGain = parseFloat(e.target.value);
+                  this.audioPreset = 'Personnalisé';
+                  this._dispatch('treble-changed', this.trebleGain);
+                }}
+                aria-label="Niveau des aigus"
+                aria-valuemin="-20"
+                aria-valuemax="20"
+                aria-valuenow=${this.trebleGain}
+              >
+            </div>
           </div>
           
           <div style="text-align: center; margin-top: 40px; color: var(--text-dim); font-size: 0.8rem;">
