@@ -39,14 +39,100 @@ export class StatusDisplay extends LitElement {
       animation: spin 1s cubic-bezier(0.4, 0, 0.2, 1) infinite;
     }
 
+    .processing-container {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      padding: 12px 20px;
+      background: var(--glass-bg, rgba(20, 20, 30, 0.8));
+      backdrop-filter: blur(16px);
+      border: 1px solid var(--glass-border, rgba(255, 255, 255, 0.1));
+      border-radius: 24px;
+      box-shadow: 0 8px 32px rgba(0, 0, 0, 0.4);
+    }
+
+    .processing-spinner {
+      position: relative;
+      width: 24px;
+      height: 24px;
+    }
+
+    .processing-spinner::before,
+    .processing-spinner::after {
+      content: '';
+      position: absolute;
+      border-radius: 50%;
+      border: 2px solid transparent;
+    }
+
+    .processing-spinner::before {
+      width: 24px;
+      height: 24px;
+      border-top-color: var(--primary-color, #a8a8ff);
+      border-right-color: var(--primary-color, #a8a8ff);
+      animation: spin-processing 1.2s cubic-bezier(0.4, 0, 0.2, 1) infinite;
+    }
+
+    .processing-spinner::after {
+      width: 16px;
+      height: 16px;
+      top: 4px;
+      left: 4px;
+      border-bottom-color: rgba(168, 168, 255, 0.6);
+      border-left-color: rgba(168, 168, 255, 0.6);
+      animation: spin-processing-reverse 0.8s cubic-bezier(0.4, 0, 0.2, 1) infinite;
+    }
+
+    .processing-text {
+      color: var(--text-main, rgba(255, 255, 255, 0.9));
+      font-weight: 500;
+      position: relative;
+    }
+
+    .processing-dots {
+      display: inline-block;
+      width: 20px;
+      text-align: left;
+    }
+
+    .processing-dots::after {
+      content: '...';
+      animation: dots 1.5s steps(4, end) infinite;
+    }
+
     @keyframes spin {
       to { transform: rotate(360deg); }
+    }
+
+    @keyframes spin-processing {
+      to { transform: rotate(360deg); }
+    }
+
+    @keyframes spin-processing-reverse {
+      to { transform: rotate(-360deg); }
+    }
+
+    @keyframes dots {
+      0%, 20% { content: '.'; }
+      40% { content: '..'; }
+      60%, 100% { content: '...'; }
     }
   `;
 
   render() {
+    if (this.isProcessing) {
+      return html`
+        <div class="processing-container">
+          <div class="processing-spinner"></div>
+          <div class="processing-text">
+            ${this.status}
+            <span class="processing-dots"></span>
+          </div>
+        </div>
+      `;
+    }
+
     return html`
-      ${this.isProcessing ? html`<span class="spinner"></span>` : ''}
       ${this.status} ${this.error ? `| ${this.error}` : ''} 
     `;
   }

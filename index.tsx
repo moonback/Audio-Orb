@@ -13,6 +13,9 @@ import './visual-3d';
 import './components/settings-panel';
 import './components/control-panel';
 import './components/status-display';
+import './components/latency-indicator';
+import './components/vu-meter';
+import {Analyser} from './analyser';
 
 @customElement('gdm-live-audio')
 export class GdmLiveAudio extends LitElement {
@@ -30,6 +33,11 @@ export class GdmLiveAudio extends LitElement {
   // Personality State
   @state() personalities: Personality[] = [];
   @state() selectedPersonalityId = 'assistant';
+
+  // UI Indicators
+  @state() latency = 0;
+  @state() inputLevel = 0;
+  @state() outputLevel = 0;
 
   private client: GoogleGenAI;
   private session: Session;
@@ -49,6 +57,14 @@ export class GdmLiveAudio extends LitElement {
   
   // Store the current session's text to summarize later
   private currentSessionTranscript: string[] = [];
+
+  // Audio analysers for VU meter
+  private inputAnalyser: Analyser;
+  private outputAnalyser: Analyser;
+  
+  // Latency tracking
+  private lastAudioSendTime = 0;
+  private latencyUpdateInterval: number | null = null;
 
   static styles = css`
     :host {
@@ -84,6 +100,16 @@ export class GdmLiveAudio extends LitElement {
       this.selectedPersonalityId = 'assistant';
     }
 
+    // Initialize analysers
+    this.inputAnalyser = new Analyser(this.inputNode);
+    this.outputAnalyser = new Analyser(this.outputNode);
+    
+    // Start VU meter update loop
+    this.startVUMeterUpdates();
+    
+    // Start latency update loop
+    this.startLatencyUpdates();
+    
     this.initClient();
   }
 
@@ -183,6 +209,13 @@ export class GdmLiveAudio extends LitElement {
               message.serverContent?.modelTurn?.parts[0]?.inlineData;
 
             if (audio) {
+              // Calculate latency
+              if (this.lastAudioSendTime > 0) {
+                const currentTime = performance.now();
+                this.latency = currentTime - this.lastAudioSendTime;
+                this.lastAudioSendTime = 0; // Reset
+              }
+
               this.nextStartTime = Math.max(
                 this.nextStartTime,
                 this.outputAudioContext.currentTime,
@@ -254,6 +287,48 @@ export class GdmLiveAudio extends LitElement {
     this.error = msg;
   }
 
+  private startVUMeterUpdates() {
+    const updateLevels = () => {
+      if (this.isRecording || this.sources.size > 0) {
+        // Update input level
+        this.inputAnalyser.update();
+        const inputData = this.inputAnalyser.data;
+        const inputMax = Math.max(...Array.from(inputData));
+        this.inputLevel = Math.min((inputMax / 255) * 100, 100);
+
+        // Update output level
+        this.outputAnalyser.update();
+        const outputData = this.outputAnalyser.data;
+        const outputMax = Math.max(...Array.from(outputData));
+        this.outputLevel = Math.min((outputMax / 255) * 100, 100);
+      } else {
+        // Decay levels when not active
+        this.inputLevel = Math.max(0, this.inputLevel * 0.9);
+        this.outputLevel = Math.max(0, this.outputLevel * 0.9);
+      }
+      requestAnimationFrame(updateLevels);
+    };
+    updateLevels();
+  }
+
+  private startLatencyUpdates() {
+    const updateLatency = () => {
+      // If we sent audio but haven't received a response yet, estimate latency
+      if (this.lastAudioSendTime > 0 && this.isRecording) {
+        const elapsed = performance.now() - this.lastAudioSendTime;
+        // Only update if it's been more than 100ms (to avoid flickering)
+        if (elapsed > 100) {
+          this.latency = elapsed;
+        }
+      } else if (!this.isRecording && this.sources.size === 0) {
+        // Decay latency when inactive
+        this.latency = Math.max(0, this.latency * 0.95);
+      }
+      requestAnimationFrame(updateLatency);
+    };
+    updateLatency();
+  }
+
   private async startRecording() {
     if (this.isRecording) {
       return;
@@ -289,6 +364,9 @@ export class GdmLiveAudio extends LitElement {
         const inputBuffer = audioProcessingEvent.inputBuffer;
         const pcmData = inputBuffer.getChannelData(0);
         
+        // Track latency: record send time
+        this.lastAudioSendTime = performance.now();
+        
         // Send data only if session is connected
         this.session?.sendRealtimeInput({media: createBlob(pcmData)});
       };
@@ -311,6 +389,7 @@ export class GdmLiveAudio extends LitElement {
     this.updateStatus('Arrêté');
 
     this.isRecording = false;
+    this.lastAudioSendTime = 0; // Reset latency tracking
 
     if (this.scriptProcessorNode && this.sourceNode && this.inputAudioContext) {
       this.scriptProcessorNode.disconnect();
@@ -431,6 +510,17 @@ export class GdmLiveAudio extends LitElement {
         <gdm-live-audio-visuals-3d
           .inputNode=${this.inputNode}
           .outputNode=${this.outputNode}></gdm-live-audio-visuals-3d>
+
+        <latency-indicator
+          .latency=${this.latency}
+          .isActive=${this.isRecording || this.sources.size > 0}
+        ></latency-indicator>
+
+        <vu-meter
+          .inputLevel=${this.inputLevel}
+          .outputLevel=${this.outputLevel}
+          .isActive=${this.isRecording || this.sources.size > 0}
+        ></vu-meter>
 
         <settings-panel
           .show=${this.showSettings}
