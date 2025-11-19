@@ -12,7 +12,6 @@ export class SettingsPanel extends LitElement {
   @property({type: String}) selectedStyle = 'Natural';
   @property({type: Number}) playbackRate = 1.0;
   @property({type: Number}) detune = 0;
-  @property({type: Boolean}) isThinkingMode = false;
   @property({type: String}) memory = '';
   
   // Personality Props
@@ -388,23 +387,6 @@ export class SettingsPanel extends LitElement {
                 </div>
               </div>
             `}
-          </div>
-
-          <div class="setting-group">
-            <label class="setting-label">
-              <span>Thinking Mode</span>
-              <label class="switch">
-                <input 
-                  type="checkbox" 
-                  ?checked=${this.isThinkingMode}
-                  @change=${(e: any) => this._dispatch('thinking-mode-changed', e.target.checked)}
-                >
-                <span class="slider"></span>
-              </label>
-            </label>
-            <div class="info-text">
-              Uses Gemini 2.5 Flash with thinking config (Higher latency).
-            </div>
           </div>
 
           <div class="setting-group">

@@ -24,7 +24,6 @@ export class GdmLiveAudio extends LitElement {
   @state() selectedStyle = 'Natural';
   @state() playbackRate = 1.0;
   @state() detune = 0;
-  @state() isThinkingMode = false;
   @state() memory = '';
   @state() isProcessingMemory = false;
   
@@ -74,7 +73,6 @@ export class GdmLiveAudio extends LitElement {
     this.selectedStyle = localStorage.getItem('gdm-style') || 'Natural';
     this.playbackRate = parseFloat(localStorage.getItem('gdm-rate') || '1.0');
     this.detune = parseFloat(localStorage.getItem('gdm-detune') || '0');
-    this.isThinkingMode = localStorage.getItem('gdm-thinking') === 'true';
     this.memory = localStorage.getItem('gdm-memory') || '';
     
     // Init Personalities
@@ -114,11 +112,6 @@ export class GdmLiveAudio extends LitElement {
     
     if (changedProperties.has('selectedPersonalityId')) {
       localStorage.setItem('gdm-personality', this.selectedPersonalityId);
-      needReset = true;
-    }
-
-    if (changedProperties.has('isThinkingMode')) {
-      localStorage.setItem('gdm-thinking', String(this.isThinkingMode));
       needReset = true;
     }
 
@@ -176,12 +169,6 @@ export class GdmLiveAudio extends LitElement {
       inputAudioTranscription: {},
       outputAudioTranscription: {},
     };
-
-    if (this.isThinkingMode) {
-      // Thinking config is available for Gemini 2.5 series. 
-      // We limit budget to 24576 which is safer for Flash models.
-      config.thinkingConfig = { thinkingBudget: 24576 };
-    }
 
     try {
       this.session = await this.client.live.connect({
@@ -453,10 +440,8 @@ export class GdmLiveAudio extends LitElement {
           .selectedStyle=${this.selectedStyle}
           .playbackRate=${this.playbackRate}
           .detune=${this.detune}
-          .isThinkingMode=${this.isThinkingMode}
           .memory=${this.memory}
           @close-settings=${this.toggleSettings}
-          @thinking-mode-changed=${(e: CustomEvent) => this.isThinkingMode = e.detail}
           @clear-memory=${this.clearMemory}
           @voice-changed=${(e: CustomEvent) => this.selectedVoice = e.detail}
           @style-changed=${(e: CustomEvent) => this.selectedStyle = e.detail}
