@@ -9,12 +9,13 @@ import {LitElement, css, html, PropertyValues} from 'lit';
 import {customElement, state} from 'lit/decorators.js';
 import {createBlob, decode, decodeAudioData} from './utils';
 import {Personality, PersonalityManager} from './personality';
-import './visual-3d';
+import './visual-3d-realistic';
 import './components/settings-panel';
 import './components/control-panel';
 import './components/status-display';
 import './components/latency-indicator';
 import './components/vu-meter';
+import './components/model-selector';
 import {Analyser} from './analyser';
 
 @customElement('gdm-live-audio')
@@ -23,6 +24,7 @@ export class GdmLiveAudio extends LitElement {
   @state() status = 'Prêt';
   @state() error = '';
   @state() showSettings = false;
+  @state() showModelSelector = false;
   @state() selectedVoice = 'Orus';
   @state() selectedStyle = 'Naturel';
   @state() playbackRate = 1.0;
@@ -33,6 +35,10 @@ export class GdmLiveAudio extends LitElement {
   // Personality State
   @state() personalities: Personality[] = [];
   @state() selectedPersonalityId = 'assistant';
+
+  // Avatar State - Ready Player Me par défaut
+  @state() modelUrl = 'https://models.readyplayer.me/6913458cd14d41dcac39ac9a.glb';
+  @state() modelSource: 'readyplayerme' | 'custom' = 'readyplayerme';
 
   // UI Indicators
   @state() latency = 0;
@@ -101,7 +107,7 @@ export class GdmLiveAudio extends LitElement {
     }
 
     /* Allow interaction with UI elements */
-    control-panel, settings-panel, .top-bar {
+    control-panel, settings-panel, model-selector, .top-bar {
       pointer-events: auto;
     }
 
@@ -128,6 +134,13 @@ export class GdmLiveAudio extends LitElement {
     // Verify selected personality exists (it might have been deleted)
     if (!this.personalityManager.getById(this.selectedPersonalityId)) {
       this.selectedPersonalityId = 'assistant';
+    }
+
+    // Load model settings (fallback to default Ready Player Me)
+    const savedModelUrl = localStorage.getItem('gdm-model-url');
+    if (savedModelUrl) {
+      this.modelUrl = savedModelUrl;
+      this.modelSource = (localStorage.getItem('gdm-model-source') as any) || 'readyplayerme';
     }
 
     // Initialize analysers
@@ -502,6 +515,19 @@ export class GdmLiveAudio extends LitElement {
   private toggleSettings() {
     this.showSettings = !this.showSettings;
   }
+
+  private toggleModelSelector() {
+    this.showModelSelector = !this.showModelSelector;
+  }
+
+  private _handleModelSelected(e: CustomEvent) {
+    const { modelUrl, source } = e.detail;
+    this.modelUrl = modelUrl;
+    this.modelSource = source;
+    localStorage.setItem('gdm-model-url', modelUrl);
+    localStorage.setItem('gdm-model-source', source);
+    this.updateStatus('Modèle 3D chargé');
+  }
   
   private _handleCreatePersonality(e: CustomEvent) {
     const {name, prompt} = e.detail;
@@ -525,6 +551,7 @@ export class GdmLiveAudio extends LitElement {
       <gdm-live-audio-visuals-3d
         .inputNode=${this.inputNode}
         .outputNode=${this.outputNode}
+        .modelUrl=${this.modelUrl}
       ></gdm-live-audio-visuals-3d>
 
       <!-- UI Overlay -->
@@ -552,6 +579,32 @@ export class GdmLiveAudio extends LitElement {
           @reset=${this.reset}
         ></control-panel>
 
+        <div style="position: absolute; bottom: 40px; right: 40px; z-index: 20; pointer-events: auto;">
+          <button
+            @click=${this.toggleModelSelector}
+            style="
+              background: rgba(138, 180, 248, 0.2);
+              border: 1px solid rgba(138, 180, 248, 0.4);
+              color: white;
+              padding: 14px 24px;
+              border-radius: 24px;
+              cursor: pointer;
+              font-family: 'Google Sans', Roboto, sans-serif;
+              font-size: 0.95rem;
+              font-weight: 500;
+              backdrop-filter: blur(16px);
+              transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+              box-shadow: 0 4px 12px rgba(0, 0, 0, 0.2);
+              display: flex;
+              align-items: center;
+              gap: 8px;
+            "
+          >
+            <span style="font-size: 1.2rem;">🧑</span>
+            <span>Changer Avatar</span>
+          </button>
+        </div>
+
         <settings-panel
           .show=${this.showSettings}
           .personalities=${this.personalities}
@@ -571,6 +624,12 @@ export class GdmLiveAudio extends LitElement {
           @create-personality=${this._handleCreatePersonality}
           @delete-personality=${this._handleDeletePersonality}
         ></settings-panel>
+
+        <model-selector
+          .show=${this.showModelSelector}
+          @close=${this.toggleModelSelector}
+          @model-selected=${this._handleModelSelected}
+        ></model-selector>
       </div>
     `;
   }

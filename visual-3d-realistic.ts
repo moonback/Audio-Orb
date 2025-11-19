@@ -18,39 +18,47 @@ import {RenderPass} from 'three/addons/postprocessing/RenderPass.js';
 import {ShaderPass} from 'three/addons/postprocessing/ShaderPass.js';
 import {UnrealBloomPass} from 'three/addons/postprocessing/UnrealBloomPass.js';
 import {FXAAShader} from 'three/addons/shaders/FXAAShader.js';
+import {GLTFLoader} from 'three/addons/loaders/GLTFLoader.js';
 import {fs as backdropFS, vs as backdropVS} from './backdrop-shader';
 
 /**
- * 3D live audio visual with animated avatar.
+ * 3D live audio visual with realistic human avatar.
  */
 @customElement('gdm-live-audio-visuals-3d')
 export class GdmLiveAudioVisuals3D extends LitElement {
   private inputAnalyser!: Analyser;
   private outputAnalyser!: Analyser;
   private camera!: THREE.PerspectiveCamera;
+  private scene!: THREE.Scene;
   private backdrop!: THREE.Mesh;
   private composer!: EffectComposer;
   private avatarGroup!: THREE.Group;
+  private loadedModel!: THREE.Group | null;
+  private mixer!: THREE.AnimationMixer | null;
+  private idleAction!: THREE.AnimationAction | null;
+  private talkingAction!: THREE.AnimationAction | null;
+  private particles!: THREE.Points;
+  private prevTime = 0;
+
+  // Geometric avatar parts (fallback)
   private headGroup!: THREE.Group;
   private eyes!: THREE.Group;
   private leftEye!: THREE.Mesh;
   private rightEye!: THREE.Mesh;
-  private leftEyeGlow!: THREE.Mesh;
-  private rightEyeGlow!: THREE.Mesh;
   private mouthVisualizer!: THREE.Mesh;
-  private particles!: THREE.Points;
-  private ring!: THREE.Mesh;
   private leftEar!: THREE.Mesh;
   private rightEar!: THREE.Mesh;
-  private head!: THREE.Mesh;
-  private prevTime = 0;
+  private ring!: THREE.Mesh;
 
   // Smoothed audio data
   private smoothedAudioData = new THREE.Vector3(0, 0, 0);
 
-  // Avatar animation state
+  // Morphs for facial animation (realistic models)
+  private headMesh!: THREE.SkinnedMesh | null;
+  private mouthOpenMorph = 0;
+  private eyeBlinkMorph = 0;
   private blinkTimer = 0;
-  private blinkState = 0; // 0 = open, 1 = closing, 2 = opening
+  private blinkState = 0;
   private targetLookAt = new THREE.Vector3(0, 0, 5);
   private currentLookAt = new THREE.Vector3(0, 0, 5);
 
@@ -58,12 +66,15 @@ export class GdmLiveAudioVisuals3D extends LitElement {
   @property({type: Object}) 
   avatarConfig: AvatarConfig = {...DEFAULT_AVATAR_CONFIG};
 
+  @property({type: String})
+  modelUrl = ''; // URL du modèle GLB/GLTF
+
   private _outputNode!: AudioNode;
 
   @property()
   set outputNode(node: AudioNode) {
     this._outputNode = node;
-      this.outputAnalyser = new Analyser(this._outputNode);
+    this.outputAnalyser = new Analyser(this._outputNode);
   }
 
   get outputNode() {
@@ -75,7 +86,7 @@ export class GdmLiveAudioVisuals3D extends LitElement {
   @property()
   set inputNode(node: AudioNode) {
     this._inputNode = node;
-      this.inputAnalyser = new Analyser(this._inputNode);
+    this.inputAnalyser = new Analyser(this._inputNode);
   }
 
   get inputNode() {
@@ -84,9 +95,8 @@ export class GdmLiveAudioVisuals3D extends LitElement {
 
   updated(changedProperties: Map<string, any>) {
     super.updated(changedProperties);
-    if (changedProperties.has('avatarConfig') && this.canvas) {
-      // Rebuild avatar when config changes
-      this.buildAvatar(null as any);
+    if (changedProperties.has('modelUrl') && this.modelUrl && this.scene) {
+      this.loadGLTFModel(this.modelUrl);
     }
   }
 
@@ -98,12 +108,107 @@ export class GdmLiveAudioVisuals3D extends LitElement {
       height: 100% !important;
       position: absolute;
       inset: 0;
-      image-rendering: pixelated;
+      image-rendering: auto;
+    }
+
+    .loading {
+      position: absolute;
+      top: 50%;
+      left: 50%;
+      transform: translate(-50%, -50%);
+      color: white;
+      font-family: 'Google Sans', sans-serif;
+      font-size: 1.2rem;
+      z-index: 100;
+      text-align: center;
+    }
+
+    .spinner {
+      width: 40px;
+      height: 40px;
+      border: 4px solid rgba(255,255,255,0.1);
+      border-top-color: #8ab4f8;
+      border-radius: 50%;
+      animation: spin 1s linear infinite;
+      margin: 0 auto 16px;
+    }
+
+    @keyframes spin {
+      to { transform: rotate(360deg); }
     }
   `;
 
   connectedCallback() {
     super.connectedCallback();
+  }
+
+  private async loadGLTFModel(url: string) {
+    try {
+      // Clear existing model
+      if (this.loadedModel) {
+        this.avatarGroup.remove(this.loadedModel);
+      }
+
+      const loader = new GLTFLoader();
+      const gltf = await loader.loadAsync(url);
+      
+      this.loadedModel = gltf.scene;
+      
+      // Setup animations
+      if (gltf.animations && gltf.animations.length > 0) {
+        this.mixer = new THREE.AnimationMixer(this.loadedModel);
+        
+        // Find idle and talking animations
+        gltf.animations.forEach((clip) => {
+          const action = this.mixer.clipAction(clip);
+          if (clip.name.toLowerCase().includes('idle')) {
+            this.idleAction = action;
+            action.play();
+          } else if (clip.name.toLowerCase().includes('talk')) {
+            this.talkingAction = action;
+          }
+        });
+      }
+
+      // Find head mesh for morph targets
+      this.loadedModel.traverse((child) => {
+        if (child instanceof THREE.SkinnedMesh) {
+          if (child.name.toLowerCase().includes('head') || 
+              child.name.toLowerCase().includes('face')) {
+            this.headMesh = child;
+          }
+        }
+      });
+
+      // Scale and position
+      const box = new THREE.Box3().setFromObject(this.loadedModel);
+      const size = box.getSize(new THREE.Vector3());
+      const scale = 1.8 / Math.max(size.x, size.y, size.z);
+      this.loadedModel.scale.setScalar(scale);
+
+      // Center and position
+      const center = box.getCenter(new THREE.Vector3());
+      this.loadedModel.position.x = -center.x * scale;
+      this.loadedModel.position.y = -box.min.y * scale - 0.3; // Feet on ground
+      this.loadedModel.position.z = -center.z * scale;
+
+      // Enable shadows
+      this.loadedModel.traverse((child) => {
+        if (child instanceof THREE.Mesh) {
+          child.castShadow = true;
+          child.receiveShadow = true;
+        }
+      });
+
+      this.avatarGroup.add(this.loadedModel);
+      
+      console.log('✅ Modèle 3D chargé avec succès');
+      
+    } catch (error) {
+      console.error('Error loading GLTF model:', error);
+      // Fallback to geometric avatar
+      this.buildGeometricAvatar();
+    }
   }
 
   private getHeadGeometry(): THREE.BufferGeometry {
@@ -132,17 +237,12 @@ export class GdmLiveAudioVisuals3D extends LitElement {
     }
   }
 
-  private buildAvatar(scene: THREE.Scene) {
-    // Clear existing avatar parts
-    if (this.head) this.headGroup.remove(this.head);
-    if (this.leftEye) this.eyes?.remove(this.leftEye);
-    if (this.rightEye) this.eyes?.remove(this.rightEye);
-    if (this.leftEyeGlow) this.eyes?.remove(this.leftEyeGlow);
-    if (this.rightEyeGlow) this.eyes?.remove(this.rightEyeGlow);
-    if (this.mouthVisualizer) this.headGroup.remove(this.mouthVisualizer);
-    if (this.leftEar) this.headGroup.remove(this.leftEar);
-    if (this.rightEar) this.headGroup.remove(this.rightEar);
-    if (this.ring) this.headGroup.remove(this.ring);
+  private buildGeometricAvatar() {
+    // Clear existing parts
+    this.avatarGroup.children = [];
+
+    this.headGroup = new THREE.Group();
+    this.avatarGroup.add(this.headGroup);
 
     const cfg = this.avatarConfig;
 
@@ -157,8 +257,8 @@ export class GdmLiveAudioVisuals3D extends LitElement {
       emissive: new THREE.Color(cfg.headColor).multiplyScalar(0.2),
       emissiveIntensity: 0.5
     });
-    this.head = new THREE.Mesh(headGeometry, headMaterial);
-    this.headGroup.add(this.head);
+    const head = new THREE.Mesh(headGeometry, headMaterial);
+    this.headGroup.add(head);
 
     // Face plate
     const facePlateGeometry = new THREE.CircleGeometry(0.8, 64);
@@ -175,11 +275,9 @@ export class GdmLiveAudioVisuals3D extends LitElement {
     this.headGroup.add(facePlate);
 
     // Eyes
-    if (!this.eyes) {
-      this.eyes = new THREE.Group();
-      this.headGroup.add(this.eyes);
-    }
+    this.eyes = new THREE.Group();
     this.eyes.position.set(0, 0.25, 1.05);
+    this.headGroup.add(this.eyes);
 
     const eyeGeometry = this.getEyeGeometry();
     const eyeMaterial = new THREE.MeshBasicMaterial({
@@ -199,26 +297,6 @@ export class GdmLiveAudioVisuals3D extends LitElement {
     this.rightEye.position.set(cfg.eyeSpacing, 0, 0);
     this.rightEye.scale.setScalar(cfg.eyeSize);
     this.eyes.add(this.rightEye);
-
-    // Eye glow
-    if (cfg.eyeGlow) {
-      const eyeGlowGeometry = new THREE.SphereGeometry(0.12, 16, 16);
-      const eyeGlowMaterial = new THREE.MeshBasicMaterial({
-        color: new THREE.Color(cfg.eyeColor),
-        transparent: true,
-        opacity: 0.3
-      });
-
-      this.leftEyeGlow = new THREE.Mesh(eyeGlowGeometry, eyeGlowMaterial.clone());
-      this.leftEyeGlow.position.copy(this.leftEye.position);
-      this.leftEyeGlow.scale.setScalar(cfg.eyeSize);
-      this.eyes.add(this.leftEyeGlow);
-
-      this.rightEyeGlow = new THREE.Mesh(eyeGlowGeometry, eyeGlowMaterial.clone());
-      this.rightEyeGlow.position.copy(this.rightEye.position);
-      this.rightEyeGlow.scale.setScalar(cfg.eyeSize);
-      this.eyes.add(this.rightEyeGlow);
-    }
 
     // Mouth
     let mouthGeometry: THREE.BufferGeometry;
@@ -263,13 +341,11 @@ export class GdmLiveAudioVisuals3D extends LitElement {
       this.leftEar = new THREE.Mesh(earGeometry, earMaterial.clone());
       this.leftEar.rotation.z = Math.PI / 2;
       this.leftEar.position.set(-1.1, 0.1, 0);
-      this.leftEar.userData.isEar = true;
       this.headGroup.add(this.leftEar);
 
       this.rightEar = new THREE.Mesh(earGeometry, earMaterial.clone());
       this.rightEar.rotation.z = Math.PI / 2;
       this.rightEar.position.set(1.1, 0.1, 0);
-      this.rightEar.userData.isEar = true;
       this.headGroup.add(this.rightEar);
     }
 
@@ -291,24 +367,25 @@ export class GdmLiveAudioVisuals3D extends LitElement {
   }
 
   private init() {
-    const scene = new THREE.Scene();
-    scene.background = new THREE.Color(0x020204);
+    this.scene = new THREE.Scene();
+    this.scene.background = new THREE.Color(0x020204);
 
-    // Lighting
-    const ambientLight = new THREE.AmbientLight(0xffffff, 0.2);
-    scene.add(ambientLight);
+    // Lighting for realistic models
+    const ambientLight = new THREE.AmbientLight(0xffffff, 0.5);
+    this.scene.add(ambientLight);
 
-    const keyLight = new THREE.DirectionalLight(0x6688ff, 1.5);
+    const keyLight = new THREE.DirectionalLight(0xffffff, 1.5);
     keyLight.position.set(3, 5, 5);
-    scene.add(keyLight);
+    keyLight.castShadow = true;
+    this.scene.add(keyLight);
 
-    const fillLight = new THREE.DirectionalLight(0xff6688, 0.8);
+    const fillLight = new THREE.DirectionalLight(0x8899ff, 0.8);
     fillLight.position.set(-3, 2, 3);
-    scene.add(fillLight);
+    this.scene.add(fillLight);
 
     const rimLight = new THREE.PointLight(0x44ffff, 2.0, 20);
     rimLight.position.set(0, 3, -3);
-    scene.add(rimLight);
+    this.scene.add(rimLight);
 
     // Backdrop
     const backdrop = new THREE.Mesh(
@@ -323,20 +400,20 @@ export class GdmLiveAudioVisuals3D extends LitElement {
         glslVersion: THREE.GLSL3,
         side: THREE.BackSide,
         transparent: true,
-        opacity: 0.25
+        opacity: 0.2
       }),
     );
-    scene.add(backdrop);
+    this.scene.add(backdrop);
     this.backdrop = backdrop;
 
     // Camera
     const camera = new THREE.PerspectiveCamera(
-      65,
+      50,
       window.innerWidth / window.innerHeight,
       0.1,
       1000,
     );
-    camera.position.set(0, 0.5, 5);
+    camera.position.set(0, 1, 4);
     this.camera = camera;
 
     const renderer = new THREE.WebGLRenderer({
@@ -346,25 +423,27 @@ export class GdmLiveAudioVisuals3D extends LitElement {
     });
     renderer.setSize(window.innerWidth, window.innerHeight);
     renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
+    renderer.shadowMap.enabled = true;
 
-    // === AVATAR CONSTRUCTION ===
+    // Avatar Group
     this.avatarGroup = new THREE.Group();
-    scene.add(this.avatarGroup);
+    this.scene.add(this.avatarGroup);
 
-    this.headGroup = new THREE.Group();
-    this.avatarGroup.add(this.headGroup);
+    // Load model or fallback
+    if (this.modelUrl) {
+      this.loadGLTFModel(this.modelUrl);
+    } else {
+      this.buildGeometricAvatar();
+    }
 
-    // Build avatar with config
-    this.buildAvatar(scene);
-
-    // Particle System
+    // Particles
     const particleCount = 1500;
     const particlesGeometry = new THREE.BufferGeometry();
     const particlePositions = new Float32Array(particleCount * 3);
     
     for(let i = 0; i < particleCount; i++) {
         const r = 3 + Math.random() * 8;
-      const theta = Math.random() * Math.PI * 2;
+        const theta = Math.random() * Math.PI * 2;
         const phi = Math.acos(2 * Math.random() - 1);
         
         particlePositions[i * 3] = r * Math.sin(phi) * Math.cos(theta);
@@ -377,26 +456,23 @@ export class GdmLiveAudioVisuals3D extends LitElement {
     const particlesMaterial = new THREE.PointsMaterial({
         color: 0x5588aa,
         size: 0.03,
-      transparent: true,
-        opacity: 0.5,
+        transparent: true,
+        opacity: 0.4,
         blending: THREE.AdditiveBlending
     });
     
     this.particles = new THREE.Points(particlesGeometry, particlesMaterial);
-    scene.add(this.particles);
+    this.scene.add(this.particles);
 
     // Post Processing
-    const renderPass = new RenderPass(scene, camera);
+    const renderPass = new RenderPass(this.scene, camera);
 
     const bloomPass = new UnrealBloomPass(
       new THREE.Vector2(window.innerWidth, window.innerHeight),
-      1.0,
+      0.8,
       0.4,
-      0.3,
+      0.4,
     );
-    bloomPass.strength = 1.0;
-    bloomPass.radius = 0.5;
-    bloomPass.threshold = 0.3;
 
     const composer = new EffectComposer(renderer);
     composer.addPass(renderPass);
@@ -430,7 +506,7 @@ export class GdmLiveAudioVisuals3D extends LitElement {
     const t = performance.now() / 1000;
     const dt = t - this.prevTime;
     this.prevTime = t;
-    
+
     // Audio processing
     const inLow = this.inputAnalyser.data[0] / 255;
     const inMid = this.inputAnalyser.data[1] / 255;
@@ -450,93 +526,149 @@ export class GdmLiveAudioVisuals3D extends LitElement {
     this.smoothedAudioData.y += (targetMid - this.smoothedAudioData.y) * lerpFactor;
     this.smoothedAudioData.z += (targetHigh - this.smoothedAudioData.z) * lerpFactor;
 
-    // === AVATAR ANIMATION ===
-
-    // 1. Idle Float + Speech Bob
-    const idleY = Math.sin(t * 1.2) * 0.08;
-    const speechBob = Math.sin(t * 10) * this.smoothedAudioData.x * 0.12;
-    this.avatarGroup.position.y = idleY + speechBob;
-
-    // Head tilt and nod
-    const idleTilt = Math.sin(t * 0.6) * 0.08;
-    const speechNod = Math.sin(t * 8) * this.smoothedAudioData.x * 0.15;
-    this.avatarGroup.rotation.z = idleTilt;
-    this.avatarGroup.rotation.x = speechNod;
-
-    // Squash and stretch on beats
-    const scaleX = 1.0 + this.smoothedAudioData.x * 0.08;
-    const scaleY = 1.0 + (1.0 - scaleX) * 0.5;
-    this.headGroup.scale.set(scaleX, scaleY, scaleX);
-
-    // 2. Blinking
-    this.blinkTimer += dt;
-    if (this.blinkTimer > 3 && this.blinkState === 0) {
-      this.blinkState = 1; // Start closing
-      this.blinkTimer = 0;
-      
-      // Change look target
-      this.targetLookAt.set(
-        (Math.random() - 0.5) * 2,
-        (Math.random() - 0.5) * 1,
-        5
-      );
-    }
-
-    // Blink animation
-    if (this.blinkState === 1) {
-      this.leftEye.scale.y = Math.max(0.1, this.leftEye.scale.y - 0.15);
-      this.rightEye.scale.y = Math.max(0.1, this.rightEye.scale.y - 0.15);
-      if (this.leftEye.scale.y <= 0.1) {
-        this.blinkState = 2; // Start opening
+    // Animation for realistic 3D models
+    const hasRealisticModel = this.loadedModel && !this.headGroup;
+    
+    if (hasRealisticModel) {
+      // Update animation mixer
+      if (this.mixer) {
+        this.mixer.update(dt);
+        
+        // Blend between idle and talking
+        if (this.idleAction && this.talkingAction) {
+          const talkWeight = this.smoothedAudioData.x;
+          this.idleAction.setEffectiveWeight(1 - talkWeight);
+          this.talkingAction.setEffectiveWeight(talkWeight);
+          if (!this.talkingAction.isRunning() && talkWeight > 0.1) {
+            this.talkingAction.play();
+          }
+        }
       }
-    } else if (this.blinkState === 2) {
-      this.leftEye.scale.y = Math.min(1.0, this.leftEye.scale.y + 0.15);
-      this.rightEye.scale.y = Math.min(1.0, this.rightEye.scale.y + 0.15);
-      if (this.leftEye.scale.y >= 1.0) {
-        this.blinkState = 0; // Done
+
+      // Morph targets for facial expressions
+      if (this.headMesh && this.headMesh.morphTargetInfluences) {
+        const influences = this.headMesh.morphTargetInfluences;
+        const dict = this.headMesh.morphTargetDictionary;
+        
+        // Mouth open based on audio
+        if (dict && dict['mouthOpen'] !== undefined) {
+          influences[dict['mouthOpen']] = this.smoothedAudioData.x * 0.8;
+        }
+        
+        // Blinking
+        this.blinkTimer += dt;
+        if (this.blinkTimer > 3) {
+          this.eyeBlinkMorph = 1;
+          this.blinkTimer = 0;
+        }
+        if (this.eyeBlinkMorph > 0) {
+          this.eyeBlinkMorph -= dt * 5;
+          if (dict && dict['eyesClosed'] !== undefined) {
+            influences[dict['eyesClosed']] = Math.max(0, this.eyeBlinkMorph);
+          }
+        }
+      }
+
+      // Idle bob animation (always active)
+      const idleY = Math.sin(t * 1.2) * 0.03;
+      const speechBob = Math.sin(t * 8) * this.smoothedAudioData.x * 0.05;
+      this.avatarGroup.position.y = idleY + speechBob;
+
+      // Subtle head movement
+      const lookX = Math.sin(t * 0.4) * 0.1;
+      const lookY = Math.cos(t * 0.6) * 0.05 + this.smoothedAudioData.x * 0.1;
+      this.avatarGroup.rotation.y = lookX;
+      this.avatarGroup.rotation.x = lookY;
+
+      // Slight head tilt when talking
+      this.avatarGroup.rotation.z = Math.sin(t * 0.5) * 0.05 + 
+                                     Math.sin(t * 12) * this.smoothedAudioData.x * 0.08;
+    }
+
+    // Animation for geometric avatar
+    if (this.headGroup && this.eyes) {
+      // Idle bob and speech bob
+      const idleY = Math.sin(t * 1.2) * 0.08;
+      const speechBob = Math.sin(t * 10) * this.smoothedAudioData.x * 0.12;
+      this.avatarGroup.position.y = idleY + speechBob;
+
+      // Head tilt
+      const idleTilt = Math.sin(t * 0.6) * 0.08;
+      const speechNod = Math.sin(t * 8) * this.smoothedAudioData.x * 0.15;
+      this.avatarGroup.rotation.z = idleTilt;
+      this.avatarGroup.rotation.x = speechNod;
+
+      // Squash and stretch
+      const scaleX = 1.0 + this.smoothedAudioData.x * 0.08;
+      const scaleY = 1.0 + (1.0 - scaleX) * 0.5;
+      this.headGroup.scale.set(scaleX, scaleY, scaleX);
+
+      // Blinking
+      this.blinkTimer += dt;
+      if (this.blinkTimer > 3 && this.blinkState === 0) {
+        this.blinkState = 1;
+        this.blinkTimer = 0;
+        this.targetLookAt.set(
+          (Math.random() - 0.5) * 2,
+          (Math.random() - 0.5) * 1,
+          5
+        );
+      }
+
+      if (this.blinkState === 1) {
+        this.leftEye.scale.y = Math.max(0.1, this.leftEye.scale.y - 0.15);
+        this.rightEye.scale.y = Math.max(0.1, this.rightEye.scale.y - 0.15);
+        if (this.leftEye.scale.y <= 0.1) {
+          this.blinkState = 2;
+        }
+      } else if (this.blinkState === 2) {
+        this.leftEye.scale.y = Math.min(1.0, this.leftEye.scale.y + 0.15);
+        this.rightEye.scale.y = Math.min(1.0, this.rightEye.scale.y + 0.15);
+        if (this.leftEye.scale.y >= 1.0) {
+          this.blinkState = 0;
+        }
+      }
+
+      // Eye expression
+      if (this.blinkState === 0) {
+        const eyeWide = 1.0 + this.smoothedAudioData.x * 0.4;
+        this.leftEye.scale.y = eyeWide;
+        this.rightEye.scale.y = eyeWide;
+      }
+
+      // Look at
+      this.currentLookAt.lerp(this.targetLookAt, 0.03);
+      this.eyes.lookAt(this.currentLookAt);
+
+      // Mouth animation
+      if (this.mouthVisualizer) {
+        const mouthHeight = 0.08 + this.smoothedAudioData.x * 0.6;
+        const mouthWidth = 1.0 + this.smoothedAudioData.y * 0.4;
+        this.mouthVisualizer.scale.set(mouthWidth, mouthHeight / 0.08, 1);
+
+        const mouthMat = this.mouthVisualizer.material as THREE.MeshStandardMaterial;
+        const hue = 0.55 - this.smoothedAudioData.x * 0.15;
+        mouthMat.color.setHSL(hue, 0.9, 0.5);
+        mouthMat.emissive.setHSL(hue, 0.9, 0.4 + this.smoothedAudioData.x * 0.4);
+        mouthMat.emissiveIntensity = 1.5 + this.smoothedAudioData.x * 2.0;
+      }
+
+      // Ears
+      if (this.leftEar && this.rightEar) {
+        const inMid = this.inputAnalyser.data[1] / 255;
+        [this.leftEar, this.rightEar].forEach(ear => {
+          const earMat = ear.material as THREE.MeshPhysicalMaterial;
+          const pulse = 0.5 + inMid * 3.0;
+          earMat.emissiveIntensity = pulse;
+          const earScale = 1.0 + inMid * 0.15;
+          ear.scale.set(earScale, earScale, earScale);
+        });
       }
     }
 
-    // Eye expression (widen when talking)
-    if (this.blinkState === 0) {
-      const eyeWide = 1.0 + this.smoothedAudioData.x * 0.4;
-      this.leftEye.scale.y = eyeWide;
-      this.rightEye.scale.y = eyeWide;
-    }
-
-    // Look at target
-    this.currentLookAt.lerp(this.targetLookAt, 0.03);
-    this.eyes.lookAt(this.currentLookAt);
-
-    // 3. Mouth Animation
-    const mouthHeight = 0.08 + this.smoothedAudioData.x * 0.6;
-    const mouthWidth = 1.0 + this.smoothedAudioData.y * 0.4;
-    this.mouthVisualizer.scale.set(mouthWidth, mouthHeight / 0.08, 1);
-
-    // Color shift
-    const mouthMat = this.mouthVisualizer.material as THREE.MeshStandardMaterial;
-    const hue = 0.55 - this.smoothedAudioData.x * 0.15;
-    mouthMat.color.setHSL(hue, 0.9, 0.5);
-    mouthMat.emissive.setHSL(hue, 0.9, 0.4 + this.smoothedAudioData.x * 0.4);
-    mouthMat.emissiveIntensity = 1.5 + this.smoothedAudioData.x * 2.0;
-
-    // 4. Ears react to input
-    if (this.avatarConfig.hasEars && this.leftEar && this.rightEar) {
-      const ears = [this.leftEar, this.rightEar];
-      ears.forEach(ear => {
-        const earMat = ear.material as THREE.MeshPhysicalMaterial;
-        const pulse = 0.5 + inMid * 3.0;
-        earMat.emissiveIntensity = pulse;
-        // Pulse scale
-        const earScale = 1.0 + inMid * 0.15;
-        ear.scale.set(earScale, earScale, earScale);
-      });
-    }
-
-    // 5. Particles
-    this.particles.rotation.y += 0.001 + this.smoothedAudioData.x * 0.005;
-    this.particles.rotation.x += 0.0005;
-    const particleScale = 1.0 + this.smoothedAudioData.x * 0.15;
+    // Particles
+    this.particles.rotation.y += 0.001;
+    const particleScale = 1.0 + this.smoothedAudioData.x * 0.1;
     this.particles.scale.setScalar(particleScale);
 
     // Backdrop
@@ -561,3 +693,4 @@ declare global {
     'gdm-live-audio-visuals-3d': GdmLiveAudioVisuals3D;
   }
 }
+
