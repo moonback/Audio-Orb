@@ -30,11 +30,12 @@ Ce document présente le plan de développement futur d'Audio Orb, depuis le MVP
 
 ### 1.2 Performance & Optimisation
 - [x] **Optimisation audio**
-  - [ ] Réduction de la latence (buffer adaptatif)
+  - [x] Réduction de la latence (buffer adaptatif)
   - [x] Détection de silence pour économiser la bande passante API
-- [ ] **Optimisation 3D**
-  - [ ] LOD (Level of Detail) dynamique selon le device
-  - [ ] Réduction qualité sur appareils mobiles
+- [x] **Optimisation 3D**
+  - [x] LOD (Level of Detail) dynamique selon le device
+  - [x] Réduction qualité sur appareils mobiles
+  - [x] Pause automatique quand onglet inactif
 
 ### 1.3 Fonctionnalités Audio
 - [x] **Égaliseur audio**

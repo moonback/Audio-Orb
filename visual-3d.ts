@@ -10,6 +10,7 @@
 import {LitElement, css, html} from 'lit';
 import {customElement, property} from 'lit/decorators.js';
 import {Analyser} from './analyser';
+import {deviceDetector} from './utils/device-detection';
 
 import * as THREE from 'three';
 import {EffectComposer} from 'three/addons/postprocessing/EffectComposer.js';
@@ -39,6 +40,14 @@ export class GdmLiveAudioVisuals3D extends LitElement {
   // Speaker tracking (-1 = User, 1 = AI, 0 = None/Mixed)
   private currentSpeaker = 0; 
   private smoothedSpeaker = 0;
+  
+  // Performance settings
+  private qualitySettings: ReturnType<typeof deviceDetector.get3DQualitySettings>;
+  private renderer!: THREE.WebGLRenderer;
+  private isPageVisible = true;
+  private animationFrameId: number | null = null;
+  private resizeHandler: (() => void) | null = null;
+  private visibilityHandler: (() => void) | null = null;
 
   private _outputNode!: AudioNode;
 
@@ -82,6 +91,9 @@ export class GdmLiveAudioVisuals3D extends LitElement {
   }
 
   private init() {
+    // Get device-specific quality settings
+    this.qualitySettings = deviceDetector.get3DQualitySettings();
+    
     const scene = new THREE.Scene();
     scene.background = new THREE.Color(0x000000); // Pure black
 
@@ -100,17 +112,18 @@ export class GdmLiveAudioVisuals3D extends LitElement {
 
     const renderer = new THREE.WebGLRenderer({
       canvas: this.canvas,
-      antialias: true,
+      antialias: this.qualitySettings.antialias,
       powerPreference: "high-performance",
       alpha: false
     });
     renderer.setSize(window.innerWidth, window.innerHeight);
-    renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
+    renderer.setPixelRatio(this.qualitySettings.pixelRatio);
     renderer.setClearColor(0x000000, 1);
+    this.renderer = renderer;
 
-    // Professional Waveform
+    // Professional Waveform with adaptive quality
     const aspect = window.innerWidth / window.innerHeight;
-    const barCount = 48;
+    const barCount = this.qualitySettings.barCount;
     const baseRadius = Math.min(2.2, 2.0 * Math.min(aspect, 1.0 / aspect));
     const barWidth = 0.05;
     
@@ -153,14 +166,22 @@ export class GdmLiveAudioVisuals3D extends LitElement {
 
     const bloomPass = new UnrealBloomPass(
       new THREE.Vector2(window.innerWidth, window.innerHeight),
-      0.8,
-      0.3,
-      0.4,
+      this.qualitySettings.bloomIntensity,
+      this.qualitySettings.bloomThreshold,
+      this.qualitySettings.bloomRadius,
     );
 
     const composer = new EffectComposer(renderer);
     composer.addPass(renderPass);
     composer.addPass(bloomPass);
+    
+    // Add FXAA only for high quality
+    if (this.qualitySettings.enableFXAA) {
+      const fxaaPass = new ShaderPass(FXAAShader);
+      fxaaPass.material.uniforms['resolution'].value.x = 1 / (window.innerWidth * this.qualitySettings.pixelRatio);
+      fxaaPass.material.uniforms['resolution'].value.y = 1 / (window.innerHeight * this.qualitySettings.pixelRatio);
+      composer.addPass(fxaaPass);
+    }
 
     this.composer = composer;
 
@@ -170,7 +191,17 @@ export class GdmLiveAudioVisuals3D extends LitElement {
       const w = window.innerWidth;
       const h = window.innerHeight;
       renderer.setSize(w, h);
+      renderer.setPixelRatio(this.qualitySettings.pixelRatio);
       composer.setSize(w, h);
+      
+      // Update FXAA resolution if enabled
+      if (this.qualitySettings.enableFXAA && composer.passes.length > 2) {
+        const fxaaPass = composer.passes[2] as ShaderPass;
+        if (fxaaPass && fxaaPass.material.uniforms['resolution']) {
+          fxaaPass.material.uniforms['resolution'].value.x = 1 / (w * this.qualitySettings.pixelRatio);
+          fxaaPass.material.uniforms['resolution'].value.y = 1 / (h * this.qualitySettings.pixelRatio);
+        }
+      }
       
       const aspect = w / h;
       const baseRadius = Math.min(2.2, 2.0 * Math.min(aspect, 1.0 / aspect));
@@ -182,14 +213,68 @@ export class GdmLiveAudioVisuals3D extends LitElement {
       }
     };
 
-    window.addEventListener('resize', onWindowResize);
+    this.resizeHandler = onWindowResize;
+    window.addEventListener('resize', this.resizeHandler);
     onWindowResize();
+
+    // Pause animation when page is hidden (performance optimization)
+    this.visibilityHandler = () => {
+      this.isPageVisible = !document.hidden;
+      if (this.isPageVisible && !this.animationFrameId) {
+        this.animation();
+      }
+    };
+    document.addEventListener('visibilitychange', this.visibilityHandler);
 
     this.animation();
   }
+  
+  disconnectedCallback() {
+    super.disconnectedCallback();
+    
+    // Cancel animation
+    if (this.animationFrameId !== null) {
+      cancelAnimationFrame(this.animationFrameId);
+      this.animationFrameId = null;
+    }
+    
+    // Remove event listeners
+    if (this.resizeHandler) {
+      window.removeEventListener('resize', this.resizeHandler);
+      this.resizeHandler = null;
+    }
+    
+    if (this.visibilityHandler) {
+      document.removeEventListener('visibilitychange', this.visibilityHandler);
+      this.visibilityHandler = null;
+    }
+    
+    // Dispose Three.js resources
+    if (this.renderer) {
+      this.renderer.dispose();
+    }
+    
+    this.waveformBars.forEach(bar => {
+      (bar.geometry as THREE.BufferGeometry).dispose();
+      if (Array.isArray(bar.material)) {
+        bar.material.forEach(mat => mat.dispose());
+      } else {
+        bar.material.dispose();
+      }
+    });
+    
+    if (this.composer) {
+      this.composer.dispose();
+    }
+  }
 
   private animation() {
-    requestAnimationFrame(() => this.animation());
+    if (!this.isPageVisible) {
+      this.animationFrameId = null;
+      return; // Pause when page is hidden
+    }
+    
+    this.animationFrameId = requestAnimationFrame(() => this.animation());
 
     this.inputAnalyser.update();
     this.outputAnalyser.update();

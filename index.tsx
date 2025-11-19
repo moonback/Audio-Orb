@@ -12,6 +12,8 @@ import {Personality, PersonalityManager} from './personality';
 import {MemoryManager, StructuredMemory, MemoryCategory} from './memory';
 import {debouncedStorage} from './utils/storage';
 import {ThrottledRAF} from './utils/performance';
+import {deviceDetector} from './utils/device-detection';
+import {AdaptiveBufferManager} from './utils/adaptive-buffer';
 import './components/settings-panel';
 import './components/control-panel';
 import './components/status-display';
@@ -82,6 +84,8 @@ export class GdmLiveAudio extends LitElement {
   private vuMeterRAF: ThrottledRAF;
   private latencyRAF: ThrottledRAF;
   private keyboardHandler: ((e: KeyboardEvent) => void) | null = null;
+  private adaptiveBuffer: AdaptiveBufferManager;
+  private deviceInfo: ReturnType<typeof deviceDetector.detect>;
 
   static styles = css`
     :host {
@@ -224,6 +228,17 @@ export class GdmLiveAudio extends LitElement {
     // Initialize performance optimizations
     this.vuMeterRAF = new ThrottledRAF(16); // ~60fps
     this.latencyRAF = new ThrottledRAF(16);
+    
+    // Detect device capabilities
+    this.deviceInfo = deviceDetector.detect();
+    const recommendedBufferSize = deviceDetector.getRecommendedBufferSize();
+    this.adaptiveBuffer = new AdaptiveBufferManager(recommendedBufferSize, 200);
+    
+    console.log('[Device]', {
+      isMobile: this.deviceInfo.isMobile,
+      quality: this.deviceInfo.recommendedQuality,
+      bufferSize: recommendedBufferSize,
+    });
     
     // Load settings from local storage
     this.selectedVoice = debouncedStorage.getItem('gdm-voice') || 'Orus';
@@ -551,7 +566,11 @@ CODE DE CONDUITE POUR ASSISTANT :
     const updateLatency = () => {
       if (this.lastAudioSendTime > 0 && this.isRecording) {
         const elapsed = performance.now() - this.lastAudioSendTime;
-        if (elapsed > 100) this.latency = elapsed;
+        if (elapsed > 100) {
+          this.latency = elapsed;
+          // Record latency for adaptive buffer
+          this.adaptiveBuffer.recordLatency(elapsed);
+        }
       } else if (!this.isRecording && this.sources.size === 0) {
         this.latency = Math.max(0, this.latency * 0.95);
       }
@@ -599,7 +618,10 @@ CODE DE CONDUITE POUR ASSISTANT :
       this.updateStatus('Écoute...');
       this.sourceNode = this.inputAudioContext.createMediaStreamSource(this.mediaStream);
       this.sourceNode.connect(this.inputNode);
-      this.scriptProcessorNode = this.inputAudioContext.createScriptProcessor(256, 1, 1);
+      
+      // Use adaptive buffer size
+      const bufferSize = this.adaptiveBuffer.getBufferSize();
+      this.scriptProcessorNode = this.inputAudioContext.createScriptProcessor(bufferSize, 1, 1);
       this.scriptProcessorNode.onaudioprocess = (audioProcessingEvent) => {
         if (!this.isRecording) return;
         const inputBuffer = audioProcessingEvent.inputBuffer;
