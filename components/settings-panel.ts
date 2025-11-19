@@ -25,11 +25,14 @@ export class SettingsPanel extends LitElement {
   static styles = css`
     :host {
       font-family: 'Google Sans', Roboto, sans-serif;
-      --glass-bg: rgba(20, 20, 30, 0.6);
+      --glass-bg: rgba(15, 15, 25, 0.8);
       --glass-border: rgba(255, 255, 255, 0.1);
-      --primary-color: #a8a8ff;
-      --text-main: rgba(255, 255, 255, 0.9);
-      --text-dim: rgba(255, 255, 255, 0.5);
+      --primary-color: #8ab4f8;
+      --primary-hover: #aecbfa;
+      --danger-color: #ff8a80;
+      --text-main: #e8eaed;
+      --text-dim: #9aa0a6;
+      --input-bg: rgba(255, 255, 255, 0.05);
     }
 
     .settings-overlay {
@@ -38,14 +41,14 @@ export class SettingsPanel extends LitElement {
       left: 0;
       right: 0;
       bottom: 0;
-      background: rgba(0, 0, 0, 0.6);
+      background: rgba(0, 0, 0, 0.7);
       z-index: 100;
       display: flex;
       align-items: center;
       justify-content: center;
       backdrop-filter: blur(8px);
       opacity: 0;
-      animation: fadeIn 0.2s forwards;
+      animation: fadeIn 0.25s ease-out forwards;
     }
 
     @keyframes fadeIn {
@@ -55,17 +58,18 @@ export class SettingsPanel extends LitElement {
     .settings-panel {
       background: var(--glass-bg);
       border: 1px solid var(--glass-border);
-      border-radius: 24px;
+      border-radius: 28px;
       padding: 32px;
-      width: 360px;
+      width: 400px;
       max-height: 85vh;
       overflow-y: auto;
       color: var(--text-main);
-      box-shadow: 0 24px 48px rgba(0,0,0,0.5);
+      box-shadow: 0 24px 64px rgba(0,0,0,0.6);
       backdrop-filter: blur(24px);
-      transform: scale(0.95) translateY(10px);
+      transform: scale(0.9) translateY(20px);
       opacity: 0;
-      animation: slideUp 0.3s cubic-bezier(0.2, 0.8, 0.2, 1) forwards;
+      animation: slideUp 0.35s cubic-bezier(0.175, 0.885, 0.32, 1.275) forwards;
+      animation-delay: 0.05s;
     }
 
     @keyframes slideUp {
@@ -73,14 +77,17 @@ export class SettingsPanel extends LitElement {
     }
 
     .settings-panel::-webkit-scrollbar {
-      width: 6px;
+      width: 8px;
     }
     .settings-panel::-webkit-scrollbar-track {
       background: transparent;
     }
     .settings-panel::-webkit-scrollbar-thumb {
-      background: rgba(255, 255, 255, 0.1);
-      border-radius: 3px;
+      background: rgba(255, 255, 255, 0.15);
+      border-radius: 4px;
+    }
+    .settings-panel::-webkit-scrollbar-thumb:hover {
+      background: rgba(255, 255, 255, 0.25);
     }
 
     .settings-header {
@@ -88,18 +95,23 @@ export class SettingsPanel extends LitElement {
       justify-content: space-between;
       align-items: center;
       margin-bottom: 32px;
+      border-bottom: 1px solid var(--glass-border);
+      padding-bottom: 16px;
     }
     
     .settings-header h2 {
       margin: 0;
-      font-size: 1.25rem;
-      font-weight: 500;
-      letter-spacing: 0.5px;
+      font-size: 1.5rem;
+      font-weight: 400;
+      letter-spacing: -0.5px;
+      background: linear-gradient(90deg, #fff, #aaa);
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
     }
 
     .settings-header button {
-      background: transparent;
-      border: none;
+      background: rgba(255,255,255,0.05);
+      border: 1px solid var(--glass-border);
       color: var(--text-dim);
       cursor: pointer;
       padding: 8px;
@@ -109,45 +121,55 @@ export class SettingsPanel extends LitElement {
     }
     
     .settings-header button:hover {
-      background: rgba(255,255,255,0.1);
+      background: rgba(255,255,255,0.15);
       color: white;
+      transform: rotate(90deg);
     }
 
     .setting-group {
-      margin-bottom: 24px;
+      margin-bottom: 28px;
       background: rgba(0,0,0,0.2);
-      padding: 16px;
-      border-radius: 16px;
+      padding: 20px;
+      border-radius: 20px;
+      border: 1px solid transparent;
+      transition: border-color 0.3s;
+    }
+
+    .setting-group:hover {
+      border-color: rgba(255,255,255,0.05);
     }
 
     .setting-label {
       margin-bottom: 12px;
-      font-size: 0.85rem;
+      font-size: 0.8rem;
       color: var(--text-dim);
       display: flex;
       justify-content: space-between;
       align-items: center;
       text-transform: uppercase;
-      letter-spacing: 1px;
-      font-weight: 600;
+      letter-spacing: 1.5px;
+      font-weight: 700;
     }
 
     .setting-value {
       color: var(--primary-color);
-      font-family: monospace;
-      font-size: 0.9rem;
+      font-family: 'Roboto Mono', monospace;
+      font-size: 0.85rem;
+      background: rgba(138, 180, 248, 0.1);
+      padding: 2px 6px;
+      border-radius: 4px;
     }
 
     select, input[type="text"] {
       width: 100%;
-      background: rgba(255,255,255,0.05);
+      background: var(--input-bg);
       border: 1px solid var(--glass-border);
       color: white;
-      padding: 12px 16px;
+      padding: 14px 16px;
       border-radius: 12px;
-      font-size: 0.95rem;
+      font-size: 1rem;
       outline: none;
-      transition: border-color 0.2s;
+      transition: all 0.2s;
     }
 
     select {
@@ -162,6 +184,7 @@ export class SettingsPanel extends LitElement {
     select:hover, select:focus, input[type="text"]:focus {
       border-color: var(--primary-color);
       background-color: rgba(255,255,255,0.1);
+      box-shadow: 0 0 0 4px rgba(138, 180, 248, 0.1);
     }
     
     select option {
@@ -173,18 +196,20 @@ export class SettingsPanel extends LitElement {
       width: 100%;
       -webkit-appearance: none; 
       background: transparent; 
+      margin: 10px 0;
     }
 
     input[type=range]::-webkit-slider-thumb {
       -webkit-appearance: none;
-      height: 16px;
-      width: 16px;
+      height: 20px;
+      width: 20px;
       border-radius: 50%;
       background: var(--primary-color);
       cursor: pointer;
-      margin-top: -6px; 
-      box-shadow: 0 0 10px var(--primary-color);
-      transition: transform 0.1s;
+      margin-top: -8px; 
+      box-shadow: 0 0 15px rgba(138, 180, 248, 0.5);
+      transition: transform 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+      border: 2px solid white;
     }
 
     input[type=range]::-webkit-slider-thumb:hover {
@@ -199,36 +224,6 @@ export class SettingsPanel extends LitElement {
       border-radius: 2px;
     }
 
-    .switch {
-      position: relative;
-      display: inline-block;
-      width: 44px;
-      height: 24px;
-    }
-    .switch input { opacity: 0; width: 0; height: 0; }
-    .slider {
-      position: absolute;
-      cursor: pointer;
-      top: 0; left: 0; right: 0; bottom: 0;
-      background-color: rgba(255,255,255,0.1);
-      transition: .3s cubic-bezier(0.4, 0, 0.2, 1);
-      border-radius: 24px;
-    }
-    .slider:before {
-      position: absolute;
-      content: "";
-      height: 18px;
-      width: 18px;
-      left: 3px;
-      bottom: 3px;
-      background-color: white;
-      transition: .3s cubic-bezier(0.4, 0, 0.2, 1);
-      border-radius: 50%;
-      box-shadow: 0 2px 4px rgba(0,0,0,0.2);
-    }
-    input:checked + .slider { background-color: var(--primary-color); }
-    input:checked + .slider:before { transform: translateX(20px); }
-
     .info-text {
       font-size: 0.8rem;
       color: var(--text-dim);
@@ -238,23 +233,25 @@ export class SettingsPanel extends LitElement {
 
     textarea {
       width: 100%;
-      background: rgba(0, 0, 0, 0.3);
+      background: var(--input-bg);
       border: 1px solid var(--glass-border);
       border-radius: 12px;
       color: var(--text-main);
-      padding: 12px;
+      padding: 14px;
       font-family: 'Roboto Mono', monospace;
-      font-size: 0.8rem;
+      font-size: 0.85rem;
       resize: none;
-      transition: border-color 0.2s;
+      transition: all 0.2s;
+      line-height: 1.5;
     }
     
     textarea.memory-display {
-      height: 100px;
+      height: 120px;
+      opacity: 0.8;
     }
 
     textarea.prompt-input {
-      height: 80px;
+      height: 100px;
       margin-top: 8px;
       font-family: 'Google Sans', Roboto, sans-serif;
     }
@@ -262,24 +259,31 @@ export class SettingsPanel extends LitElement {
     textarea:focus {
       outline: none;
       border-color: var(--primary-color);
+      background: rgba(255,255,255,0.08);
     }
 
     .btn-small {
       background: rgba(255, 255, 255, 0.05);
       border: 1px solid var(--glass-border);
       color: var(--text-main);
-      padding: 8px 16px;
-      border-radius: 8px;
+      padding: 10px 16px;
+      border-radius: 10px;
       cursor: pointer;
-      font-size: 0.85rem;
+      font-size: 0.9rem;
+      font-weight: 500;
       margin-top: 12px;
       width: 100%;
       transition: all 0.2s;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      gap: 8px;
     }
     
     .btn-small:hover {
       background: rgba(255, 255, 255, 0.1);
       border-color: rgba(255, 255, 255, 0.3);
+      transform: translateY(-1px);
     }
 
     .btn-small.primary {
@@ -287,32 +291,49 @@ export class SettingsPanel extends LitElement {
       color: #000;
       font-weight: 600;
       border: none;
+      box-shadow: 0 4px 12px rgba(138, 180, 248, 0.3);
     }
 
     .btn-small.primary:hover {
-      opacity: 0.9;
+      background: var(--primary-hover);
+      transform: translateY(-1px);
+      box-shadow: 0 6px 16px rgba(138, 180, 248, 0.4);
+    }
+    
+    .btn-small.danger {
+        color: var(--danger-color);
+        border-color: rgba(255, 138, 128, 0.3);
+    }
+    
+    .btn-small.danger:hover {
+        background: rgba(255, 138, 128, 0.1);
+        border-color: var(--danger-color);
     }
 
     .btn-icon {
       background: transparent;
       border: none;
       cursor: pointer;
-      font-size: 1rem;
-      padding: 4px;
-      opacity: 0.7;
-      transition: opacity 0.2s;
+      font-size: 1.1rem;
+      padding: 6px;
+      border-radius: 8px;
+      color: var(--text-dim);
+      transition: all 0.2s;
     }
-    .btn-icon:hover { opacity: 1; }
+    .btn-icon:hover { 
+        background: rgba(255,255,255,0.1);
+        color: var(--danger-color);
+    }
     
     .creation-form {
-      margin-top: 16px;
-      padding-top: 16px;
+      margin-top: 20px;
+      padding-top: 20px;
       border-top: 1px solid var(--glass-border);
       animation: fadeIn 0.3s ease;
     }
     
     .creation-form input {
-      margin-bottom: 8px;
+      margin-bottom: 12px;
     }
   `;
 
@@ -345,7 +366,7 @@ export class SettingsPanel extends LitElement {
           <div class="settings-header">
             <h2>Paramètres</h2>
             <button @click=${this._close}>
-              <svg xmlns="http://www.w3.org/2000/svg" height="24px" viewBox="0 -960 960 960" width="24px" fill="#ffffff"><path d="m256-200-56-56 224-224-224-224 56-56 224 224 224-224 56 56-224 224 224 224-56 56-224-224-224 224Z"/></svg>
+              <svg xmlns="http://www.w3.org/2000/svg" height="24px" viewBox="0 -960 960 960" width="24px" fill="currentColor"><path d="m256-200-56-56 224-224-224-224 56-56 224 224 224-224 56 56-224 224 224 224-56 56-224-224-224 224Z"/></svg>
             </button>
           </div>
 
@@ -369,7 +390,7 @@ export class SettingsPanel extends LitElement {
             
             ${!this.isCreatingPersonality ? html`
               <button class="btn-small" @click=${() => this.isCreatingPersonality = true}>
-                + Créer une nouvelle personnalité
+                <span>+</span> Créer une nouvelle personnalité
               </button>
             ` : html`
               <div class="creation-form">
@@ -381,7 +402,7 @@ export class SettingsPanel extends LitElement {
                   .value=${this.newPersonalityPrompt}
                   @input=${(e: any) => this.newPersonalityPrompt = e.target.value}
                 ></textarea>
-                <div style="display: flex; gap: 8px;">
+                <div style="display: flex; gap: 12px; margin-top: 12px;">
                   <button class="btn-small" @click=${() => this.isCreatingPersonality = false}>Annuler</button>
                   <button class="btn-small primary" @click=${this._savePersonality}>Enregistrer</button>
                 </div>
@@ -390,13 +411,18 @@ export class SettingsPanel extends LitElement {
           </div>
 
           <div class="setting-group">
-            <label class="setting-label">Mémoire à long terme</label>
-            <textarea class="memory-display" readonly>${this.memory || "Aucune mémoire pour le moment. Parlez-moi !"}</textarea>
-            <button class="btn-small" @click=${() => this._dispatch('clear-memory', null)}>Effacer la mémoire</button>
+            <label class="setting-label">
+                <span>Mémoire à long terme</span>
+                <span class="setting-value" style="font-size: 0.7rem; cursor: help" title="Ce que l'IA a appris de vous">?</span>
+            </label>
+            <textarea class="memory-display" readonly placeholder="Aucune mémoire pour le moment. Parlez-moi !">${this.memory}</textarea>
+            <button class="btn-small danger" @click=${() => this._dispatch('clear-memory', null)}>
+                🗑️ Effacer la mémoire
+            </button>
           </div>
 
           <div class="setting-group">
-            <label class="setting-label">Voix</label>
+            <label class="setting-label">Voix du Synthétiseur</label>
             <select @change=${(e: any) => this._dispatch('voice-changed', e.target.value)}>
               ${VOICES.map(voice => html`
                 <option value=${voice} ?selected=${this.selectedVoice === voice}>${voice}</option>
@@ -415,7 +441,7 @@ export class SettingsPanel extends LitElement {
 
           <div class="setting-group">
             <label class="setting-label">
-              <span>Vitesse</span>
+              <span>Vitesse de lecture</span>
               <span class="setting-value">${this.playbackRate.toFixed(1)}x</span>
             </label>
             <input 
@@ -430,7 +456,7 @@ export class SettingsPanel extends LitElement {
 
           <div class="setting-group">
             <label class="setting-label">
-              <span>Hauteur (Détune)</span>
+              <span>Hauteur (Pitch)</span>
               <span class="setting-value">${this.detune} cents</span>
             </label>
             <input 
@@ -441,6 +467,10 @@ export class SettingsPanel extends LitElement {
               .value=${this.detune}
               @input=${(e: any) => this._dispatch('detune-changed', parseFloat(e.target.value))}
             >
+          </div>
+          
+          <div style="text-align: center; margin-top: 40px; color: var(--text-dim); font-size: 0.8rem;">
+            Audio Orb - v2.0
           </div>
         </div>
       </div>

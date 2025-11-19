@@ -10,112 +10,85 @@ export class StatusDisplay extends LitElement {
   static styles = css`
     :host {
       position: absolute;
-      bottom: 140px;
+      top: 20px;
       left: 50%;
       transform: translateX(-50%);
       z-index: 10;
       text-align: center;
-      color: var(--text-dim, rgba(255, 255, 255, 0.5));
-      font-size: 0.9rem;
-      letter-spacing: 0.5px;
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      gap: 10px;
-      background: rgba(0, 0, 0, 0.3);
-      padding: 8px 16px;
-      border-radius: 20px;
-      backdrop-filter: blur(4px);
-      transition: all 0.3s ease;
       font-family: 'Google Sans', Roboto, sans-serif;
+      pointer-events: none;
     }
 
-    .spinner {
-      width: 14px;
-      height: 14px;
-      border: 2px solid rgba(255,255,255,0.1);
-      border-radius: 50%;
-      border-top-color: var(--primary-color, #a8a8ff);
-      animation: spin 1s cubic-bezier(0.4, 0, 0.2, 1) infinite;
+    .status-text {
+      color: rgba(255, 255, 255, 0.6);
+      font-size: 0.9rem;
+      letter-spacing: 1px;
+      text-transform: uppercase;
+      font-weight: 500;
+      text-shadow: 0 2px 4px rgba(0,0,0,0.5);
+      transition: all 0.3s ease;
+    }
+
+    .error-text {
+      margin-top: 8px;
+      color: #ff8a80;
+      background: rgba(20, 0, 0, 0.6);
+      padding: 8px 16px;
+      border-radius: 20px;
+      border: 1px solid rgba(255, 138, 128, 0.2);
+      font-size: 0.85rem;
+      backdrop-filter: blur(4px);
+      animation: slideDown 0.3s ease;
     }
 
     .processing-container {
       display: flex;
       align-items: center;
       gap: 12px;
-      padding: 12px 20px;
-      background: var(--glass-bg, rgba(20, 20, 30, 0.8));
+      padding: 10px 24px;
+      background: rgba(20, 20, 30, 0.6);
       backdrop-filter: blur(16px);
-      border: 1px solid var(--glass-border, rgba(255, 255, 255, 0.1));
-      border-radius: 24px;
-      box-shadow: 0 8px 32px rgba(0, 0, 0, 0.4);
+      border: 1px solid rgba(138, 180, 248, 0.2);
+      border-radius: 30px;
+      box-shadow: 0 8px 32px rgba(0, 0, 0, 0.2);
+      animation: fadeIn 0.3s ease;
     }
 
     .processing-spinner {
       position: relative;
-      width: 24px;
-      height: 24px;
-    }
-
-    .processing-spinner::before,
-    .processing-spinner::after {
-      content: '';
-      position: absolute;
-      border-radius: 50%;
-      border: 2px solid transparent;
+      width: 20px;
+      height: 20px;
     }
 
     .processing-spinner::before {
-      width: 24px;
-      height: 24px;
-      border-top-color: var(--primary-color, #a8a8ff);
-      border-right-color: var(--primary-color, #a8a8ff);
-      animation: spin-processing 1.2s cubic-bezier(0.4, 0, 0.2, 1) infinite;
-    }
-
-    .processing-spinner::after {
-      width: 16px;
-      height: 16px;
-      top: 4px;
-      left: 4px;
-      border-bottom-color: rgba(168, 168, 255, 0.6);
-      border-left-color: rgba(168, 168, 255, 0.6);
-      animation: spin-processing-reverse 0.8s cubic-bezier(0.4, 0, 0.2, 1) infinite;
+      content: '';
+      position: absolute;
+      inset: 0;
+      border-radius: 50%;
+      border: 2px solid transparent;
+      border-top-color: #8ab4f8;
+      border-right-color: #8ab4f8;
+      animation: spin 1s cubic-bezier(0.4, 0, 0.2, 1) infinite;
     }
 
     .processing-text {
-      color: var(--text-main, rgba(255, 255, 255, 0.9));
+      color: #e8eaed;
       font-weight: 500;
-      position: relative;
-    }
-
-    .processing-dots {
-      display: inline-block;
-      width: 20px;
-      text-align: left;
-    }
-
-    .processing-dots::after {
-      content: '...';
-      animation: dots 1.5s steps(4, end) infinite;
+      font-size: 0.9rem;
     }
 
     @keyframes spin {
       to { transform: rotate(360deg); }
     }
 
-    @keyframes spin-processing {
-      to { transform: rotate(360deg); }
+    @keyframes fadeIn {
+      from { opacity: 0; transform: translateY(-10px); }
+      to { opacity: 1; transform: translateY(0); }
     }
 
-    @keyframes spin-processing-reverse {
-      to { transform: rotate(-360deg); }
-    }
-
-    @keyframes dots {
-      0%, 20% { content: '.'; }
-      40% { content: '..'; }
-      60%, 100% { content: '...'; }
+    @keyframes slideDown {
+      from { opacity: 0; transform: translateY(-10px); }
+      to { opacity: 1; transform: translateY(0); }
     }
   `;
 
@@ -125,16 +98,17 @@ export class StatusDisplay extends LitElement {
         <div class="processing-container">
           <div class="processing-spinner"></div>
           <div class="processing-text">
-            ${this.status}
-            <span class="processing-dots"></span>
+            ${this.status}...
           </div>
         </div>
       `;
     }
 
     return html`
-      ${this.status} ${this.error ? `| ${this.error}` : ''} 
+      <div>
+        <div class="status-text">${this.status}</div>
+        ${this.error ? html`<div class="error-text">${this.error}</div>` : ''}
+      </div>
     `;
   }
 }
-

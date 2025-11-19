@@ -20,7 +20,7 @@ import {Analyser} from './analyser';
 @customElement('gdm-live-audio')
 export class GdmLiveAudio extends LitElement {
   @state() isRecording = false;
-  @state() status = '';
+  @state() status = 'Prêt';
   @state() error = '';
   @state() showSettings = false;
   @state() selectedVoice = 'Orus';
@@ -69,16 +69,46 @@ export class GdmLiveAudio extends LitElement {
   static styles = css`
     :host {
       font-family: 'Google Sans', Roboto, sans-serif;
-      --primary-color: #a8a8ff;
-      --glass-bg: rgba(20, 20, 30, 0.6);
+      display: block;
+      width: 100vw;
+      height: 100vh;
+      overflow: hidden;
+      position: relative;
+      background: #000;
+      color: white;
+      
+      /* Global Design Tokens */
+      --glass-bg: rgba(10, 10, 15, 0.6);
       --glass-border: rgba(255, 255, 255, 0.1);
-      --glass-highlight: rgba(255, 255, 255, 0.05);
-      --text-main: rgba(255, 255, 255, 0.9);
-      --text-dim: rgba(255, 255, 255, 0.5);
+      --primary-color: #8ab4f8;
+      --text-main: #e8eaed;
+      --text-dim: #9aa0a6;
     }
 
     * {
       box-sizing: border-box;
+    }
+    
+    /* Layout Containers */
+    .ui-layer {
+      position: absolute;
+      inset: 0;
+      pointer-events: none; /* Allow clicks to pass through to 3D scene where needed */
+      z-index: 10;
+      display: flex;
+      flex-direction: column;
+      justify-content: space-between;
+    }
+
+    /* Allow interaction with UI elements */
+    control-panel, settings-panel, .top-bar {
+      pointer-events: auto;
+    }
+
+    .top-bar {
+      display: flex;
+      justify-content: space-between;
+      padding: 20px;
     }
   `;
 
@@ -132,21 +162,21 @@ export class GdmLiveAudio extends LitElement {
   private _handleVoiceChange(e: CustomEvent) {
     this.selectedVoice = e.detail;
     localStorage.setItem('gdm-voice', this.selectedVoice);
-    this.updateStatus('Mise à jour des paramètres...');
+    this.updateStatus('Paramètres mis à jour');
     this.reset();
   }
 
   private _handleStyleChange(e: CustomEvent) {
     this.selectedStyle = e.detail;
     localStorage.setItem('gdm-style', this.selectedStyle);
-    this.updateStatus('Mise à jour des paramètres...');
+    this.updateStatus('Paramètres mis à jour');
     this.reset();
   }
 
   private _handlePersonalityChange(e: CustomEvent) {
     this.selectedPersonalityId = e.detail;
     localStorage.setItem('gdm-personality', this.selectedPersonalityId);
-    this.updateStatus('Mise à jour des paramètres...');
+    this.updateStatus('Nouvelle personnalité chargée');
     this.reset();
   }
 
@@ -168,7 +198,6 @@ export class GdmLiveAudio extends LitElement {
 
   private async initSession() {
     // Always use the Live API compatible model. 
-    // gemini-3-pro-preview does not support the Live API WebSocket protocol directly in this configuration.
     const model = 'gemini-2.5-flash-native-audio-preview-09-2025';
 
     // Reset transcript for new session
@@ -188,7 +217,6 @@ export class GdmLiveAudio extends LitElement {
         voiceConfig: {prebuiltVoiceConfig: {voiceName: this.selectedVoice}},
       },
       systemInstruction: systemInstruction,
-      // Corrected: Use empty objects for transcription to fix "Invalid Argument" errors
       inputAudioTranscription: {},
       outputAudioTranscription: {},
     };
@@ -278,6 +306,10 @@ export class GdmLiveAudio extends LitElement {
 
   private updateStatus(msg: string) {
     this.status = msg;
+    // Clear error when status updates successfully
+    if (msg === 'Prêt' || msg === 'Écoute...') {
+        this.error = '';
+    }
   }
 
   private updateError(msg: string) {
@@ -333,7 +365,7 @@ export class GdmLiveAudio extends LitElement {
 
     this.inputAudioContext.resume();
 
-    this.updateStatus('Demande d\'accès au microphone...');
+    this.updateStatus('Accès micro...');
 
     try {
       this.mediaStream = await navigator.mediaDevices.getUserMedia({
@@ -374,7 +406,8 @@ export class GdmLiveAudio extends LitElement {
       this.isRecording = true;
     } catch (err) {
       console.error('Error starting recording:', err);
-      this.updateStatus(`Erreur : ${err.message}`);
+      this.updateStatus('Erreur micro');
+      this.updateError(err.message);
       this.stopRecording();
     }
   }
@@ -409,7 +442,7 @@ export class GdmLiveAudio extends LitElement {
     if (this.currentSessionTranscript.length === 0) return;
     
     this.isProcessingMemory = true;
-    this.updateStatus('Consolidation de la mémoire...');
+    this.updateStatus('Mémorisation...');
 
     try {
       const transcriptText = this.currentSessionTranscript.join('\n');
@@ -488,7 +521,28 @@ export class GdmLiveAudio extends LitElement {
 
   render() {
     return html`
-      <div>
+      <!-- 3D Visuals Background -->
+      <gdm-live-audio-visuals-3d
+        .inputNode=${this.inputNode}
+        .outputNode=${this.outputNode}
+      ></gdm-live-audio-visuals-3d>
+
+      <!-- UI Overlay -->
+      <div class="ui-layer">
+        <div class="top-bar">
+           <!-- Latency & VU Meter could go here or be floating -->
+           <latency-indicator
+            .latency=${this.latency}
+            .isActive=${this.isRecording || this.sources.size > 0}
+          ></latency-indicator>
+        </div>
+
+        <status-display
+          .status=${this.status}
+          .error=${this.error}
+          .isProcessing=${this.isProcessingMemory}
+        ></status-display>
+
         <control-panel
           .isRecording=${this.isRecording}
           .isProcessingMemory=${this.isProcessingMemory}
@@ -497,27 +551,6 @@ export class GdmLiveAudio extends LitElement {
           @stop-recording=${this.stopRecording}
           @reset=${this.reset}
         ></control-panel>
-
-        <status-display
-          .status=${this.status}
-          .error=${this.error}
-          .isProcessing=${this.isProcessingMemory}
-        ></status-display>
-
-        <gdm-live-audio-visuals-3d
-          .inputNode=${this.inputNode}
-          .outputNode=${this.outputNode}></gdm-live-audio-visuals-3d>
-
-        <latency-indicator
-          .latency=${this.latency}
-          .isActive=${this.isRecording || this.sources.size > 0}
-        ></latency-indicator>
-
-        <vu-meter
-          .inputLevel=${this.inputLevel}
-          .outputLevel=${this.outputLevel}
-          .isActive=${this.isRecording || this.sources.size > 0}
-        ></vu-meter>
 
         <settings-panel
           .show=${this.showSettings}

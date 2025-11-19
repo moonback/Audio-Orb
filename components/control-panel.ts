@@ -17,13 +17,22 @@ export class ControlPanel extends LitElement {
       align-items: center;
       justify-content: center;
       gap: 24px;
-      padding: 12px 32px;
-      background: rgba(20, 20, 30, 0.4);
-      backdrop-filter: blur(16px);
-      border-radius: 40px;
-      border: 1px solid var(--glass-border, rgba(255, 255, 255, 0.1));
-      box-shadow: 0 8px 32px rgba(0, 0, 0, 0.3);
+      padding: 16px 40px;
+      background: rgba(10, 10, 15, 0.6);
+      backdrop-filter: blur(20px);
+      -webkit-backdrop-filter: blur(20px);
+      border-radius: 50px;
+      border: 1px solid rgba(255, 255, 255, 0.08);
+      box-shadow: 
+        0 20px 40px rgba(0, 0, 0, 0.4),
+        inset 0 1px 0 rgba(255, 255, 255, 0.1);
       font-family: 'Google Sans', Roboto, sans-serif;
+      transition: all 0.3s ease;
+    }
+
+    :host(:hover) {
+      background: rgba(20, 20, 30, 0.7);
+      border-color: rgba(255, 255, 255, 0.15);
     }
 
     button {
@@ -31,9 +40,9 @@ export class ControlPanel extends LitElement {
       border: none;
       color: white;
       border-radius: 50%;
-      background: rgba(255, 255, 255, 0.05);
-      width: 56px;
-      height: 56px;
+      background: linear-gradient(145deg, rgba(255, 255, 255, 0.1), rgba(255, 255, 255, 0.05));
+      width: 60px;
+      height: 60px;
       cursor: pointer;
       display: flex;
       align-items: center;
@@ -41,53 +50,127 @@ export class ControlPanel extends LitElement {
       transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
       position: relative;
       overflow: hidden;
+      box-shadow: 0 4px 10px rgba(0, 0, 0, 0.2);
+    }
+
+    button::before {
+      content: '';
+      position: absolute;
+      top: 0;
+      left: 0;
+      right: 0;
+      bottom: 0;
+      background: radial-gradient(circle at center, rgba(255,255,255,0.2) 0%, transparent 70%);
+      opacity: 0;
+      transition: opacity 0.3s;
     }
 
     button:hover {
-      background: rgba(255, 255, 255, 0.15);
-      transform: translateY(-2px);
-      box-shadow: 0 4px 12px rgba(0, 0, 0, 0.2);
+      transform: translateY(-2px) scale(1.05);
+      box-shadow: 0 8px 20px rgba(0, 0, 0, 0.3);
+      background: linear-gradient(145deg, rgba(255, 255, 255, 0.15), rgba(255, 255, 255, 0.08));
+    }
+    
+    button:hover::before {
+      opacity: 1;
     }
 
     button:active {
       transform: translateY(0) scale(0.95);
+      box-shadow: 0 2px 5px rgba(0,0,0,0.2);
     }
 
     button svg {
-      width: 24px;
-      height: 24px;
+      width: 26px;
+      height: 26px;
       transition: transform 0.3s ease;
+      filter: drop-shadow(0 2px 4px rgba(0,0,0,0.2));
     }
 
+    /* Main Action Button (Start/Stop) */
     button#startButton, 
     button#stopButton {
-      width: 72px;
-      height: 72px;
-      background: rgba(255, 255, 255, 0.1);
-      border: 1px solid rgba(255, 255, 255, 0.2);
+      width: 80px;
+      height: 80px;
+      background: rgba(255, 255, 255, 0.08);
+      border: 1px solid rgba(255, 255, 255, 0.1);
+      position: relative;
     }
 
+    /* Start Button Specifics */
+    button#startButton svg {
+      fill: #ff5555;
+      filter: drop-shadow(0 0 8px rgba(255, 85, 85, 0.4));
+    }
+    
     button#startButton:hover {
-      background: rgba(255, 68, 68, 0.2);
-      border-color: rgba(255, 68, 68, 0.4);
-      box-shadow: 0 0 20px rgba(255, 68, 68, 0.2);
+      background: rgba(255, 85, 85, 0.1);
+      border-color: rgba(255, 85, 85, 0.3);
+      box-shadow: 0 0 30px rgba(255, 85, 85, 0.2);
+    }
+
+    /* Stop Button Specifics */
+    button#stopButton {
+      background: linear-gradient(135deg, #ff4444, #cc0000);
+      box-shadow: 0 0 20px rgba(255, 68, 68, 0.4);
+    }
+    
+    button#stopButton svg {
+      fill: white;
     }
 
     button.recording {
-      background: rgba(255, 68, 68, 0.9) !important;
-      animation: pulse-red 2s infinite;
+      animation: pulse-record 2s infinite;
+    }
+    
+    button.recording svg {
+      animation: pulse-icon 2s infinite;
     }
 
-    @keyframes pulse-red {
-      0% { box-shadow: 0 0 0 0 rgba(255, 68, 68, 0.4); }
-      70% { box-shadow: 0 0 0 15px rgba(255, 68, 68, 0); }
+    @keyframes pulse-record {
+      0% { box-shadow: 0 0 0 0 rgba(255, 68, 68, 0.6); }
+      70% { box-shadow: 0 0 0 20px rgba(255, 68, 68, 0); }
       100% { box-shadow: 0 0 0 0 rgba(255, 68, 68, 0); }
+    }
+    
+    @keyframes pulse-icon {
+      0%, 100% { transform: scale(1); }
+      50% { transform: scale(0.9); }
     }
 
     button:disabled {
       opacity: 0.4;
       cursor: not-allowed;
-      transform: none;
+      transform: none !important;
+      box-shadow: none !important;
+      background: rgba(255,255,255,0.05) !important;
+    }
+    
+    /* Settings & Reset icons */
+    button:not(#startButton):not(#stopButton) svg {
+      opacity: 0.8;
+    }
+    button:not(#startButton):not(#stopButton):hover svg {
+      opacity: 1;
+      transform: rotate(90deg);
+    }
+    
+    /* Tooltip */
+    .tooltip {
+      position: absolute;
+      top: -40px;
+      background: rgba(0,0,0,0.8);
+      padding: 4px 8px;
+      border-radius: 4px;
+      font-size: 12px;
+      pointer-events: none;
+      opacity: 0;
+      transition: opacity 0.2s;
+      white-space: nowrap;
+    }
+    
+    button:hover .tooltip {
+      opacity: 1;
     }
   `;
 
@@ -120,35 +203,37 @@ export class ControlPanel extends LitElement {
             <button
               id="startButton"
               @click=${this._startRecording}
-              ?disabled=${this.isProcessingMemory}>
+              ?disabled=${this.isProcessingMemory}
+              title="Démarrer la conversation">
               <svg
                 viewBox="0 0 100 100"
                 width="32px"
                 height="32px"
-                fill="#ff4444"
                 xmlns="http://www.w3.org/2000/svg">
-                <circle cx="50" cy="50" r="50" />
+                <path d="M50 15c-16.5 0-30 13.5-30 30v10c0 16.5 13.5 30 30 30s30-13.5 30-30V45c0-16.5-13.5-30-30-30zm0 65c-8.3 0-15-6.7-15-15V45c0-8.3 6.7-15 15-15s15 6.7 15 15v20c0 8.3-6.7 15-15 15z"/>
+                <path d="M20 55h-5c0 17.5 13 32 30 34.5V95h10v-5.5c17-2.5 30-17 30-34.5h-5c0 16.5-13.5 30-30 30S20 71.5 20 55z"/>
               </svg>
             </button>`
         : html`
             <button
               id="stopButton"
               class="recording"
-              @click=${this._stopRecording}>
+              @click=${this._stopRecording}
+              title="Arrêter">
               <svg
                 viewBox="0 0 100 100"
                 width="32px"
                 height="32px"
-                fill="#ffffff"
                 xmlns="http://www.w3.org/2000/svg">
-                <rect x="20" y="20" width="60" height="60" rx="5" />
+                <rect x="30" y="30" width="40" height="40" rx="4" />
               </svg>
             </button>`}
 
        <button
         id="resetButton"
         @click=${this._reset}
-        ?disabled=${this.isRecording || this.isProcessingMemory}>
+        ?disabled=${this.isRecording || this.isProcessingMemory}
+        title="Réinitialiser la session">
         <svg
           xmlns="http://www.w3.org/2000/svg"
           height="24px"
@@ -162,4 +247,3 @@ export class ControlPanel extends LitElement {
     `;
   }
 }
-
