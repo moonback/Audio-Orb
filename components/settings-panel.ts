@@ -1,5 +1,6 @@
 import {LitElement, css, html} from 'lit';
-import {customElement, property} from 'lit/decorators.js';
+import {customElement, property, state} from 'lit/decorators.js';
+import {Personality} from '../personality';
 
 const VOICES = ['Orus', 'Puck', 'Charon', 'Kore', 'Fenrir', 'Zephyr', 'Aoede'];
 const STYLES = ['Natural', 'Professional', 'Cheerful', 'British Accent', 'French Accent', 'Whispering', 'Enthusiastic'];
@@ -13,6 +14,14 @@ export class SettingsPanel extends LitElement {
   @property({type: Number}) detune = 0;
   @property({type: Boolean}) isThinkingMode = false;
   @property({type: String}) memory = '';
+  
+  // Personality Props
+  @property({type: Array}) personalities: Personality[] = [];
+  @property({type: String}) selectedPersonalityId = 'assistant';
+
+  @state() isCreatingPersonality = false;
+  @state() newPersonalityName = '';
+  @state() newPersonalityPrompt = '';
 
   static styles = css`
     :host {
@@ -130,7 +139,7 @@ export class SettingsPanel extends LitElement {
       font-size: 0.9rem;
     }
 
-    select {
+    select, input[type="text"] {
       width: 100%;
       background: rgba(255,255,255,0.05);
       border: 1px solid var(--glass-border);
@@ -139,16 +148,19 @@ export class SettingsPanel extends LitElement {
       border-radius: 12px;
       font-size: 0.95rem;
       outline: none;
+      transition: border-color 0.2s;
+    }
+
+    select {
       cursor: pointer;
       appearance: none;
       background-image: url("data:image/svg+xml;charset=US-ASCII,%3Csvg%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%20width%3D%22292.4%22%20height%3D%22292.4%22%3E%3Cpath%20fill%3D%22%23FFFFFF%22%20d%3D%22M287%2069.4a17.6%2017.6%200%200%200-13-5.4H18.4c-5%200-9.3%201.8-12.9%205.4A17.6%2017.6%200%200%200%200%2082.2c0%205%201.8%209.3%205.4%2012.9l128%20127.9c3.6%203.6%207.8%205.4%2012.8%205.4s9.2-1.8%2012.8-5.4L287%2095c3.5-3.5%205.4-7.8%205.4-12.8%200-5-1.9-9.2-5.5-12.8z%22%2F%3E%3C%2Fsvg%3E");
       background-repeat: no-repeat;
       background-position: right 16px top 50%;
       background-size: 10px auto;
-      transition: border-color 0.2s;
     }
     
-    select:hover, select:focus {
+    select:hover, select:focus, input[type="text"]:focus {
       border-color: var(--primary-color);
       background-color: rgba(255,255,255,0.1);
     }
@@ -225,9 +237,8 @@ export class SettingsPanel extends LitElement {
       line-height: 1.4;
     }
 
-    textarea.memory-display {
+    textarea {
       width: 100%;
-      height: 100px;
       background: rgba(0, 0, 0, 0.3);
       border: 1px solid var(--glass-border);
       border-radius: 12px;
@@ -239,7 +250,17 @@ export class SettingsPanel extends LitElement {
       transition: border-color 0.2s;
     }
     
-    textarea.memory-display:focus {
+    textarea.memory-display {
+      height: 100px;
+    }
+
+    textarea.prompt-input {
+      height: 80px;
+      margin-top: 8px;
+      font-family: 'Google Sans', Roboto, sans-serif;
+    }
+    
+    textarea:focus {
       outline: none;
       border-color: var(--primary-color);
     }
@@ -261,6 +282,39 @@ export class SettingsPanel extends LitElement {
       background: rgba(255, 255, 255, 0.1);
       border-color: rgba(255, 255, 255, 0.3);
     }
+
+    .btn-small.primary {
+      background: var(--primary-color);
+      color: #000;
+      font-weight: 600;
+      border: none;
+    }
+
+    .btn-small.primary:hover {
+      opacity: 0.9;
+    }
+
+    .btn-icon {
+      background: transparent;
+      border: none;
+      cursor: pointer;
+      font-size: 1rem;
+      padding: 4px;
+      opacity: 0.7;
+      transition: opacity 0.2s;
+    }
+    .btn-icon:hover { opacity: 1; }
+    
+    .creation-form {
+      margin-top: 16px;
+      padding-top: 16px;
+      border-top: 1px solid var(--glass-border);
+      animation: fadeIn 0.3s ease;
+    }
+    
+    .creation-form input {
+      margin-bottom: 8px;
+    }
   `;
 
   private _close() {
@@ -271,6 +325,18 @@ export class SettingsPanel extends LitElement {
       this.dispatchEvent(new CustomEvent(name, { detail }));
   }
 
+  private _savePersonality() {
+    if (this.newPersonalityName.trim() && this.newPersonalityPrompt.trim()) {
+      this._dispatch('create-personality', {
+        name: this.newPersonalityName,
+        prompt: this.newPersonalityPrompt
+      });
+      this.isCreatingPersonality = false;
+      this.newPersonalityName = '';
+      this.newPersonalityPrompt = '';
+    }
+  }
+
   render() {
     if (!this.show) return html``;
 
@@ -278,10 +344,50 @@ export class SettingsPanel extends LitElement {
       <div class="settings-overlay" @click=${(e: Event) => e.target === e.currentTarget && this._close()}>
         <div class="settings-panel">
           <div class="settings-header">
-            <h2>Voice Settings</h2>
+            <h2>Settings</h2>
             <button @click=${this._close}>
               <svg xmlns="http://www.w3.org/2000/svg" height="24px" viewBox="0 -960 960 960" width="24px" fill="#ffffff"><path d="m256-200-56-56 224-224-224-224 56-56 224 224 224-224 56 56-224 224 224 224-56 56-224-224-224 224Z"/></svg>
             </button>
+          </div>
+
+          <!-- Personalities Section -->
+           <div class="setting-group">
+            <label class="setting-label">
+              <span>AI Personality</span>
+              ${this.selectedPersonalityId.startsWith('custom_') ? html`
+                <button class="btn-icon" title="Delete Personality" @click=${() => this._dispatch('delete-personality', this.selectedPersonalityId)}>
+                  🗑️
+                </button>
+              ` : ''}
+            </label>
+            <select @change=${(e: any) => this._dispatch('personality-changed', e.target.value)}>
+              ${this.personalities.map(p => html`
+                <option value=${p.id} ?selected=${this.selectedPersonalityId === p.id}>
+                  ${p.name} ${p.isCustom ? '(Custom)' : ''}
+                </option>
+              `)}
+            </select>
+            
+            ${!this.isCreatingPersonality ? html`
+              <button class="btn-small" @click=${() => this.isCreatingPersonality = true}>
+                + Create New Personality
+              </button>
+            ` : html`
+              <div class="creation-form">
+                <input type="text" placeholder="Name (e.g. Yoda)" 
+                  .value=${this.newPersonalityName}
+                  @input=${(e: any) => this.newPersonalityName = e.target.value}
+                >
+                <textarea class="prompt-input" placeholder="System Instructions (e.g. Speak like Yoda you must...)"
+                  .value=${this.newPersonalityPrompt}
+                  @input=${(e: any) => this.newPersonalityPrompt = e.target.value}
+                ></textarea>
+                <div style="display: flex; gap: 8px;">
+                  <button class="btn-small" @click=${() => this.isCreatingPersonality = false}>Cancel</button>
+                  <button class="btn-small primary" @click=${this._savePersonality}>Save</button>
+                </div>
+              </div>
+            `}
           </div>
 
           <div class="setting-group">
@@ -359,4 +465,3 @@ export class SettingsPanel extends LitElement {
     `;
   }
 }
-

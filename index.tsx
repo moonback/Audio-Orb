@@ -8,6 +8,7 @@ import {GoogleGenAI, LiveServerMessage, Modality, Session} from '@google/genai';
 import {LitElement, css, html, PropertyValues} from 'lit';
 import {customElement, state} from 'lit/decorators.js';
 import {createBlob, decode, decodeAudioData} from './utils';
+import {Personality, PersonalityManager} from './personality';
 import './visual-3d';
 import './components/settings-panel';
 import './components/control-panel';
@@ -26,9 +27,15 @@ export class GdmLiveAudio extends LitElement {
   @state() isThinkingMode = false;
   @state() memory = '';
   @state() isProcessingMemory = false;
+  
+  // Personality State
+  @state() personalities: Personality[] = [];
+  @state() selectedPersonalityId = 'assistant';
 
   private client: GoogleGenAI;
   private session: Session;
+  private personalityManager = new PersonalityManager();
+
   private inputAudioContext = new (window.AudioContext ||
     (window as any).webkitAudioContext)({sampleRate: 16000});
   private outputAudioContext = new (window.AudioContext ||
@@ -69,6 +76,16 @@ export class GdmLiveAudio extends LitElement {
     this.detune = parseFloat(localStorage.getItem('gdm-detune') || '0');
     this.isThinkingMode = localStorage.getItem('gdm-thinking') === 'true';
     this.memory = localStorage.getItem('gdm-memory') || '';
+    
+    // Init Personalities
+    this.personalities = this.personalityManager.getAll();
+    this.selectedPersonalityId = localStorage.getItem('gdm-personality') || 'assistant';
+    
+    // Verify selected personality exists (it might have been deleted)
+    if (!this.personalityManager.getById(this.selectedPersonalityId)) {
+      this.selectedPersonalityId = 'assistant';
+    }
+
     this.initClient();
   }
 
@@ -92,6 +109,11 @@ export class GdmLiveAudio extends LitElement {
 
     if (changedProperties.has('selectedStyle')) {
       localStorage.setItem('gdm-style', this.selectedStyle);
+      needReset = true;
+    }
+    
+    if (changedProperties.has('selectedPersonalityId')) {
+      localStorage.setItem('gdm-personality', this.selectedPersonalityId);
       needReset = true;
     }
 
@@ -136,7 +158,8 @@ export class GdmLiveAudio extends LitElement {
     // Reset transcript for new session
     this.currentSessionTranscript = [];
 
-    let systemInstruction = `You are a helpful AI assistant. Please speak with a ${this.selectedStyle} tone, accent, or style.`;
+    const currentPersonality = this.personalityManager.getById(this.selectedPersonalityId) || this.personalityManager.getAll()[0];
+    let systemInstruction = `${currentPersonality.prompt} Please speak with a ${this.selectedStyle} tone, accent, or style.`;
 
     // Inject Memory
     if (this.memory && this.memory.trim().length > 0) {
@@ -383,6 +406,22 @@ export class GdmLiveAudio extends LitElement {
   private toggleSettings() {
     this.showSettings = !this.showSettings;
   }
+  
+  private _handleCreatePersonality(e: CustomEvent) {
+    const {name, prompt} = e.detail;
+    const newPersonality = this.personalityManager.add(name, prompt);
+    this.personalities = this.personalityManager.getAll();
+    this.selectedPersonalityId = newPersonality.id; // Auto-select new
+  }
+
+  private _handleDeletePersonality(e: CustomEvent) {
+    const id = e.detail;
+    this.personalityManager.delete(id);
+    this.personalities = this.personalityManager.getAll();
+    if (this.selectedPersonalityId === id) {
+      this.selectedPersonalityId = 'assistant'; // Fallback
+    }
+  }
 
   render() {
     return html`
@@ -408,6 +447,8 @@ export class GdmLiveAudio extends LitElement {
 
         <settings-panel
           .show=${this.showSettings}
+          .personalities=${this.personalities}
+          .selectedPersonalityId=${this.selectedPersonalityId}
           .selectedVoice=${this.selectedVoice}
           .selectedStyle=${this.selectedStyle}
           .playbackRate=${this.playbackRate}
@@ -421,6 +462,9 @@ export class GdmLiveAudio extends LitElement {
           @style-changed=${(e: CustomEvent) => this.selectedStyle = e.detail}
           @rate-changed=${(e: CustomEvent) => this.playbackRate = e.detail}
           @detune-changed=${(e: CustomEvent) => this.detune = e.detail}
+          @personality-changed=${(e: CustomEvent) => this.selectedPersonalityId = e.detail}
+          @create-personality=${this._handleCreatePersonality}
+          @delete-personality=${this._handleDeletePersonality}
         ></settings-panel>
       </div>
     `;

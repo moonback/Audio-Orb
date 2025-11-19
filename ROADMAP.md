@@ -102,10 +102,10 @@ Ce document présente le plan de développement futur d'Audio Orb, depuis le MVP
   - Export/import de mémoire
   - Synchronisation cloud (optionnelle)
 
-- [ ] **Personnalités IA**
-  - Personnalités prédéfinies (assistant, ami, mentor, etc.)
-  - Création de personnalités personnalisées
-  - Basculement entre personnalités
+- [x] **Personnalités IA**
+  - [x] Personnalités prédéfinies (assistant, ami, mentor, etc.)
+  - [x] Création de personnalités personnalisées
+  - [x] Basculement entre personnalités
 
 - [ ] **Contexte de session**
   - Contexte persistant entre sessions
@@ -318,4 +318,3 @@ Nous encourageons les contributions ! Voici comment vous pouvez aider :
 **Dernière mise à jour** : Janvier 2025  
 **Version actuelle** : MVP (0.0.0)  
 **Prochaine version majeure** : v1.0.0 (Q2 2025)
-
