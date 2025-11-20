@@ -19,6 +19,7 @@ export class OnboardingModal extends LitElement {
       inset: 0;
       display: none;
       z-index: 250;
+      font-family: 'Exo 2', 'Google Sans', sans-serif;
     }
 
     :host([data-open="true"]) {
@@ -28,8 +29,8 @@ export class OnboardingModal extends LitElement {
     .backdrop {
       position: absolute;
       inset: 0;
-      background: rgba(8, 12, 20, 0.8);
-      backdrop-filter: blur(8px);
+      background: rgba(5, 5, 10, 0.9);
+      backdrop-filter: blur(12px);
     }
 
     .modal {
@@ -37,24 +38,32 @@ export class OnboardingModal extends LitElement {
       top: 50%;
       left: 50%;
       transform: translate(-50%, -50%);
-      width: min(90vw, 600px);
-      background: var(--glass-bg, rgba(10, 10, 25, 0.95));
-      border: 1px solid var(--glass-border, rgba(255, 255, 255, 0.2));
-      border-radius: 28px;
-      padding: 32px;
-      color: var(--text-main, #e8eaed);
-      box-shadow: 0 30px 80px rgba(0, 0, 0, 0.45);
+      width: min(85vw, 550px);
+      background: rgba(10, 15, 25, 0.85);
+      border: 1px solid rgba(0, 240, 255, 0.2);
+      border-radius: 24px;
+      padding: 40px;
+      color: #e0f7fa;
+      box-shadow: 0 0 60px rgba(0, 0, 0, 0.6), 0 0 20px rgba(0, 240, 255, 0.1);
+      text-align: center;
     }
 
     h2 {
-      margin: 0 0 12px 0;
+      margin: 0 0 16px 0;
+      font-family: 'Orbitron', sans-serif;
       font-size: 1.8rem;
+      font-weight: 700;
+      letter-spacing: 2px;
+      text-transform: uppercase;
+      color: #00f0ff;
+      text-shadow: 0 0 10px rgba(0, 240, 255, 0.4);
     }
 
     p {
-      margin: 0 0 24px 0;
-      color: var(--text-dim, rgba(255, 255, 255, 0.7));
+      margin: 0 0 32px 0;
+      color: #b3e5fc;
       line-height: 1.6;
+      font-size: 1rem;
     }
 
     .actions {
@@ -66,39 +75,60 @@ export class OnboardingModal extends LitElement {
 
     button {
       border: none;
-      border-radius: 999px;
-      padding: 10px 18px;
+      border-radius: 12px;
+      padding: 12px 24px;
       font-size: 0.95rem;
       cursor: pointer;
       font-weight: 600;
+      transition: all 0.2s;
+      font-family: 'Exo 2', sans-serif;
+      text-transform: uppercase;
+      letter-spacing: 1px;
     }
 
     .ghost {
       background: transparent;
-      color: var(--text-dim, rgba(255, 255, 255, 0.7));
+      color: rgba(255, 255, 255, 0.5);
+      border: 1px solid transparent;
+    }
+    
+    .ghost:hover {
+      color: white;
+      border-color: rgba(255, 255, 255, 0.2);
     }
 
     .primary {
-      background: linear-gradient(120deg, #60a5fa, #818cf8);
-      color: #0f172a;
+      background: rgba(0, 240, 255, 0.15);
+      color: #00f0ff;
+      border: 1px solid #00f0ff;
+      box-shadow: 0 0 15px rgba(0, 240, 255, 0.2);
+    }
+    
+    .primary:hover {
+      background: #00f0ff;
+      color: #000;
+      box-shadow: 0 0 30px rgba(0, 240, 255, 0.5);
+      transform: translateY(-2px);
     }
 
     .dots {
       display: flex;
-      gap: 6px;
+      gap: 8px;
     }
 
     .dot {
       width: 8px;
       height: 8px;
       border-radius: 50%;
-      background: rgba(255, 255, 255, 0.2);
+      background: rgba(255, 255, 255, 0.1);
+      transition: all 0.3s;
     }
 
     .dot.active {
-      background: #fff;
-      width: 20px;
-      border-radius: 999px;
+      background: #00f0ff;
+      width: 24px;
+      border-radius: 4px;
+      box-shadow: 0 0 10px #00f0ff;
     }
   `;
 

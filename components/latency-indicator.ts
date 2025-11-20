@@ -8,14 +8,11 @@ export class LatencyIndicator extends LitElement {
 
   static styles = css`
     :host {
-      position: absolute;
-      top: 20px;
-      right: 20px;
       z-index: 15;
       display: flex;
       flex-direction: column;
       gap: 8px;
-      font-family: 'Google Sans', Roboto, sans-serif;
+      font-family: 'Exo 2', 'Google Sans', sans-serif;
       transition: opacity 0.3s ease;
     }
 

@@ -10,11 +10,9 @@ export class QuotaIndicator extends LitElement {
 
   static styles = css`
     :host {
-      position: absolute;
-      top: 20px;
-      right: 220px;
       z-index: 15;
-      font-family: 'Google Sans', Roboto, sans-serif;
+      font-family: 'Exo 2', 'Google Sans', sans-serif;
+      display: inline-block;
     }
 
     .card {

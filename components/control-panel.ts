@@ -17,41 +17,46 @@ export class ControlPanel extends LitElement {
       display: flex;
       align-items: center;
       justify-content: center;
-      gap: 24px;
-      padding: 16px 40px;
-      background: var(--panel-glass-bg, rgba(10, 10, 15, 0.6));
+      gap: 20px;
+      padding: 14px 30px;
+      background: var(--panel-glass-bg, rgba(10, 15, 25, 0.85));
       backdrop-filter: blur(20px);
       -webkit-backdrop-filter: blur(20px);
-      border-radius: 50px;
-      border: 1px solid var(--panel-border, rgba(255, 255, 255, 0.08));
+      border-radius: 60px;
+      border: 1px solid var(--panel-border, rgba(0, 240, 255, 0.2));
       box-shadow: 
-        0 20px 40px rgba(0, 0, 0, 0.25),
-        inset 0 1px 0 rgba(255, 255, 255, 0.08);
-      font-family: 'Google Sans', Roboto, sans-serif;
-      transition: all 0.3s ease;
-      color: var(--text-main, #ffffff);
+        0 20px 50px rgba(0, 0, 0, 0.5),
+        0 0 20px rgba(0, 240, 255, 0.1),
+        inset 0 1px 0 rgba(255, 255, 255, 0.1);
+      font-family: 'Exo 2', 'Google Sans', sans-serif;
+      transition: all 0.3s cubic-bezier(0.25, 0.8, 0.25, 1);
     }
 
     :host(:hover) {
-      border-color: rgba(255, 255, 255, 0.2);
+      border-color: rgba(0, 240, 255, 0.4);
+      box-shadow: 
+        0 25px 60px rgba(0, 0, 0, 0.6),
+        0 0 30px rgba(0, 240, 255, 0.15),
+        inset 0 1px 0 rgba(255, 255, 255, 0.15);
     }
 
     button {
       outline: none;
       border: none;
-      color: var(--text-main, #ffffff);
+      color: var(--text-main, #e0f7fa);
       border-radius: 50%;
-      background: linear-gradient(145deg, rgba(255, 255, 255, 0.15), rgba(255, 255, 255, 0.05));
-      width: 60px;
-      height: 60px;
+      background: linear-gradient(145deg, rgba(255, 255, 255, 0.1), rgba(255, 255, 255, 0.02));
+      width: 56px;
+      height: 56px;
       cursor: pointer;
       display: flex;
       align-items: center;
       justify-content: center;
-      transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+      transition: all 0.3s cubic-bezier(0.34, 1.56, 0.64, 1);
       position: relative;
       overflow: hidden;
-      box-shadow: 0 4px 10px rgba(0, 0, 0, 0.2);
+      box-shadow: 0 4px 15px rgba(0, 0, 0, 0.3);
+      border: 1px solid rgba(255, 255, 255, 0.05);
     }
 
     button::before {
@@ -61,15 +66,15 @@ export class ControlPanel extends LitElement {
       left: 0;
       right: 0;
       bottom: 0;
-      background: radial-gradient(circle at center, rgba(255,255,255,0.2) 0%, transparent 70%);
+      background: radial-gradient(circle at center, rgba(0, 240, 255, 0.3) 0%, transparent 70%);
       opacity: 0;
       transition: opacity 0.3s;
     }
 
     button:hover {
-      transform: translateY(-2px) scale(1.05);
-      box-shadow: 0 8px 20px rgba(0, 0, 0, 0.3);
-      background: linear-gradient(145deg, rgba(255, 255, 255, 0.2), rgba(255, 255, 255, 0.08));
+      transform: translateY(-3px) scale(1.08);
+      box-shadow: 0 10px 25px rgba(0, 0, 0, 0.4), 0 0 10px rgba(0, 240, 255, 0.2);
+      border-color: rgba(0, 240, 255, 0.3);
     }
     
     button:hover::before {
@@ -78,46 +83,56 @@ export class ControlPanel extends LitElement {
 
     button:active {
       transform: translateY(0) scale(0.95);
-      box-shadow: 0 2px 5px rgba(0,0,0,0.2);
+      box-shadow: 0 2px 8px rgba(0,0,0,0.3);
     }
 
     button svg {
-      width: 26px;
-      height: 26px;
-      transition: transform 0.3s ease;
-      filter: drop-shadow(0 2px 4px rgba(0,0,0,0.2));
+      width: 24px;
+      height: 24px;
+      transition: all 0.3s ease;
+      filter: drop-shadow(0 0 2px rgba(0,0,0,0.5));
+      fill: currentColor;
     }
 
     /* Main Action Button (Start/Stop) */
     button#startButton, 
     button#stopButton {
-      width: 80px;
-      height: 80px;
-      background: rgba(255, 255, 255, 0.08);
-      border: 1px solid rgba(255, 255, 255, 0.1);
-      position: relative;
+      width: 72px;
+      height: 72px;
+      margin: 0 8px;
     }
 
     /* Start Button Specifics */
+    button#startButton {
+       background: rgba(255, 255, 255, 0.05);
+       border: 1px solid rgba(0, 240, 255, 0.3);
+    }
+
     button#startButton svg {
-      fill: #ff5555;
-      filter: drop-shadow(0 0 8px rgba(255, 85, 85, 0.4));
+      fill: #00f0ff;
+      filter: drop-shadow(0 0 5px rgba(0, 240, 255, 0.6));
+      width: 32px;
+      height: 32px;
     }
     
     button#startButton:hover {
-      background: rgba(255, 85, 85, 0.1);
-      border-color: rgba(255, 85, 85, 0.3);
-      box-shadow: 0 0 30px rgba(255, 85, 85, 0.2);
+      background: rgba(0, 240, 255, 0.1);
+      border-color: #00f0ff;
+      box-shadow: 0 0 30px rgba(0, 240, 255, 0.3);
     }
 
     /* Stop Button Specifics */
     button#stopButton {
-      background: linear-gradient(135deg, #ff4444, #cc0000);
-      box-shadow: 0 0 20px rgba(255, 68, 68, 0.4);
+      background: linear-gradient(135deg, #ff0055, #990033);
+      box-shadow: 0 0 25px rgba(255, 0, 85, 0.5);
+      border: 1px solid rgba(255, 100, 150, 0.5);
     }
     
     button#stopButton svg {
       fill: white;
+      filter: drop-shadow(0 0 5px rgba(255,255,255,0.8));
+      width: 28px;
+      height: 28px;
     }
 
     button.recording {
@@ -129,49 +144,75 @@ export class ControlPanel extends LitElement {
     }
 
     @keyframes pulse-record {
-      0% { box-shadow: 0 0 0 0 rgba(255, 68, 68, 0.6); }
-      70% { box-shadow: 0 0 0 20px rgba(255, 68, 68, 0); }
-      100% { box-shadow: 0 0 0 0 rgba(255, 68, 68, 0); }
+      0% { box-shadow: 0 0 0 0 rgba(255, 0, 85, 0.6); }
+      70% { box-shadow: 0 0 0 25px rgba(255, 0, 85, 0); }
+      100% { box-shadow: 0 0 0 0 rgba(255, 0, 85, 0); }
     }
     
     @keyframes pulse-icon {
       0%, 100% { transform: scale(1); }
-      50% { transform: scale(0.9); }
+      50% { transform: scale(0.85); }
     }
 
     button:disabled {
-      opacity: 0.4;
+      opacity: 0.3;
       cursor: not-allowed;
       transform: none !important;
       box-shadow: none !important;
-      background: rgba(255,255,255,0.05) !important;
+      filter: grayscale(1);
     }
     
     /* Settings & Reset icons */
     button:not(#startButton):not(#stopButton) svg {
-      opacity: 0.8;
+      opacity: 0.7;
     }
     button:not(#startButton):not(#stopButton):hover svg {
       opacity: 1;
-      transform: rotate(90deg);
+      transform: rotate(0deg) scale(1.1);
+      filter: drop-shadow(0 0 5px rgba(0, 240, 255, 0.8));
+    }
+    
+    /* Specific rotation for settings on hover */
+    button[title*="Paramètres"]:hover svg {
+       transform: rotate(90deg) scale(1.1);
     }
     
     /* Tooltip */
     .tooltip {
-      position: absolute;
-      top: -40px;
-      background: rgba(0,0,0,0.8);
-      padding: 4px 8px;
-      border-radius: 4px;
-      font-size: 12px;
-      pointer-events: none;
-      opacity: 0;
-      transition: opacity 0.2s;
-      white-space: nowrap;
+      /* ... unchanged ... */
     }
-    
-    button:hover .tooltip {
-      opacity: 1;
+
+    /* Mobile Adaptations */
+    @media (max-width: 600px) {
+      :host {
+        bottom: 20px;
+        width: 90%;
+        max-width: 380px;
+        padding: 12px 20px;
+        gap: 12px;
+        border-radius: 40px;
+      }
+      
+      button {
+        width: 48px;
+        height: 48px;
+      }
+      
+      button#startButton, 
+      button#stopButton {
+        width: 64px;
+        height: 64px;
+      }
+      
+      button svg {
+        width: 20px;
+        height: 20px;
+      }
+      
+      button#startButton svg {
+        width: 28px;
+        height: 28px;
+      }
     }
   `;
 

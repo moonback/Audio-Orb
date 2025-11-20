@@ -18,7 +18,6 @@ import './components/control-panel';
 import './components/status-display';
 import './components/latency-indicator';
 import './components/vu-meter';
-import './components/quota-indicator';
 import './components/help-overlay';
 import './components/onboarding-modal';
 import './components/mini-waveform';
@@ -142,28 +141,30 @@ export class GdmLiveAudio extends LitElement {
 
   static styles = css`
     :host {
-      font-family: 'Google Sans', Roboto, sans-serif;
+      font-family: 'Exo 2', 'Google Sans', Roboto, sans-serif;
       display: block;
       width: 100vw;
       height: 100vh;
       overflow: hidden;
       position: relative;
-      background: var(--background-color, #000);
+      background: radial-gradient(circle at center, #1a1a2e 0%, #050505 100%);
       color: var(--text-main, #e8eaed);
       font-size: calc(16px * var(--text-scale, 1));
       
-      /* Global Design Tokens */
-      --glass-bg: rgba(10, 10, 15, 0.6);
-      --glass-border: rgba(255, 255, 255, 0.1);
-      --primary-color: #8ab4f8;
-      --text-main: #e8eaed;
-      --text-dim: #9aa0a6;
-      --panel-glass-bg: rgba(10, 10, 15, 0.6);
-      --panel-border: rgba(255, 255, 255, 0.08);
-      --chat-user-bg: linear-gradient(135deg, #6366f1, #3b82f6);
-      --chat-user-text: #ffffff;
-      --chat-ai-bg: rgba(255, 255, 255, 0.1);
-      --chat-ai-text: #e8eaed;
+      /* Global Design Tokens - Futuristic Theme */
+      --glass-bg: rgba(20, 20, 30, 0.7);
+      --glass-border: rgba(100, 200, 255, 0.2);
+      --primary-color: #00f0ff; /* Cyberpunk Cyan */
+      --secondary-color: #bc13fe; /* Neon Purple */
+      --text-main: #e0f7fa;
+      --text-dim: #81d4fa;
+      --panel-glass-bg: rgba(10, 15, 25, 0.85);
+      --panel-border: rgba(0, 240, 255, 0.3);
+      --chat-user-bg: linear-gradient(135deg, rgba(0, 240, 255, 0.2), rgba(0, 100, 255, 0.2));
+      --chat-user-text: #e0f7fa;
+      --chat-ai-bg: rgba(20, 20, 30, 0.6);
+      --chat-ai-text: #b3e5fc;
+      --glow-color: rgba(0, 240, 255, 0.6);
     }
 
     * {
@@ -204,38 +205,104 @@ export class GdmLiveAudio extends LitElement {
       pointer-events: auto;
     }
 
-    .top-bar {
+    .app-header {
+      position: absolute;
+      top: 0;
+      left: 0;
+      right: 0;
+      padding: 20px;
       display: flex;
       justify-content: space-between;
-      padding: 20px;
-      transition: opacity 0.3s ease;
+      align-items: flex-start;
+      z-index: 20;
+      pointer-events: none;
+    }
+    
+    .app-header > * {
+      pointer-events: auto;
+    }
+    
+    .header-left, .header-right {
+      display: flex;
+      flex-direction: column;
+      gap: 10px;
+    }
+    
+    .header-center {
+      position: absolute;
+      left: 50%;
+      top: 20px;
+      transform: translateX(-50%);
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 10px;
+    }
+
+    /* Mobile Adaptations */
+    @media (max-width: 768px) {
+      .app-header {
+        padding: 12px;
+      }
+      
+      .header-left {
+        align-items: flex-start;
+      }
+      
+      .header-right {
+        align-items: flex-end;
+      }
+      
+      /* Hide less critical metrics on mobile */
+      metrics-panel {
+        display: none;
+      }
+      
+      /* Adjust Status Display position on mobile */
+      .header-center {
+        top: 60px; /* Push down to avoid overlap with side indicators */
+        width: 100%;
+      }
+      
+      /* Scale down indicators */
+      latency-indicator, vu-meter {
+        transform: scale(0.85);
+        transform-origin: top center;
+      }
+      
+      vu-meter {
+        display: none; /* Hide VU meter on mobile to save space */
+      }
     }
 
     /* Chat Bubbles */
     .chat-container {
       flex: 1;
       overflow-y: auto;
-      padding: 20px 20px 120px 20px; 
+      padding: 20px 20px 140px 20px; /* Increased bottom padding for mobile control panel */
       display: flex;
       flex-direction: column;
       gap: 16px;
-      max-width: 800px;
+      max-width: 900px;
       margin: 0 auto;
       width: 100%;
       height: 100%;
-      mask-image: linear-gradient(to bottom, transparent, black 10%, black 90%, transparent);
-      -webkit-mask-image: linear-gradient(to bottom, transparent, black 10%, black 90%, transparent);
+      mask-image: linear-gradient(to bottom, transparent, black 5%, black 95%, transparent);
+      -webkit-mask-image: linear-gradient(to bottom, transparent, black 5%, black 95%, transparent);
       transition: opacity 0.3s ease;
     }
 
     .chat-bubble {
-      padding: 16px 24px;
-      border-radius: 24px;
-      max-width: 80%;
-      line-height: 1.5;
-      font-size: 16px;
-      animation: popIn 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275);
-      box-shadow: 0 4px 15px rgba(0,0,0,0.1);
+      padding: 18px 26px;
+      border-radius: 18px;
+      max-width: 85%;
+      line-height: 1.6;
+      font-size: 1rem;
+      animation: popIn 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+      box-shadow: 0 4px 20px rgba(0,0,0,0.3);
+      border: 1px solid transparent;
+      backdrop-filter: blur(12px);
+      -webkit-backdrop-filter: blur(12px);
     }
 
     .chat-bubble.user {
@@ -243,44 +310,80 @@ export class GdmLiveAudio extends LitElement {
       background: var(--chat-user-bg);
       color: var(--chat-user-text);
       border-bottom-right-radius: 4px;
+      border-color: rgba(0, 240, 255, 0.3);
+      box-shadow: 0 0 15px rgba(0, 240, 255, 0.1);
     }
 
     .chat-bubble.ai {
       align-self: flex-start;
       background: var(--chat-ai-bg);
-      backdrop-filter: blur(10px);
       border: 1px solid var(--glass-border);
       color: var(--chat-ai-text);
       border-bottom-left-radius: 4px;
+      box-shadow: 0 0 15px rgba(188, 19, 254, 0.05);
     }
 
     @keyframes popIn {
-      from { opacity: 0; transform: translateY(20px) scale(0.9); }
+      from { opacity: 0; transform: translateY(20px) scale(0.95); }
       to { opacity: 1; transform: translateY(0) scale(1); }
     }
 
     /* Hint for Zen Mode */
     .zen-hint {
       position: absolute;
-      bottom: 20px;
+      bottom: 110px; /* Position above control panel */
       left: 50%;
       transform: translateX(-50%);
       color: rgba(255, 255, 255, 0.4);
       font-size: 0.8rem;
-        opacity: 0;
+      opacity: 0;
       transition: opacity 1s ease;
       pointer-events: none;
       text-transform: uppercase;
-      letter-spacing: 1px;
-      }
+      letter-spacing: 2px;
+      font-family: 'Orbitron', sans-serif;
+      text-shadow: 0 0 10px rgba(255,255,255,0.3);
+    }
     
     .ui-layer.focus-mode .zen-hint {
         opacity: 1;
     }
 
+    /* Custom Scrollbar */
     .chat-container::-webkit-scrollbar { width: 6px; }
     .chat-container::-webkit-scrollbar-track { background: transparent; }
-    .chat-container::-webkit-scrollbar-thumb { background: rgba(255, 255, 255, 0.2); border-radius: 3px; }
+    .chat-container::-webkit-scrollbar-thumb { 
+      background: rgba(0, 240, 255, 0.2); 
+      border-radius: 3px; 
+    }
+    .chat-container::-webkit-scrollbar-thumb:hover { 
+      background: rgba(0, 240, 255, 0.4); 
+    }
+
+    /* Mobile Adaptations */
+    @media (max-width: 768px) {
+      .chat-container {
+        padding: 10px 15px 160px 15px; /* More space for larger mobile controls */
+        mask-image: linear-gradient(to bottom, transparent, black 2%, black 90%, transparent);
+      }
+      
+      .chat-bubble {
+        padding: 14px 18px;
+        font-size: 0.95rem;
+        max-width: 90%;
+      }
+      
+      .top-bar {
+        padding: 10px;
+      }
+      
+      .zen-hint {
+        bottom: 140px;
+        font-size: 0.7rem;
+        width: 100%;
+        text-align: center;
+      }
+    }
   `;
 
   constructor() {
@@ -1121,30 +1224,39 @@ export class GdmLiveAudio extends LitElement {
         
         <div class="zen-hint">Double-cliquez pour quitter le mode Zen</div>
         
-        <metrics-panel
-          .avgLatency=${this.avgLatencyMetric}
-          .errorRate=${this.errorRateMetric}
-          .uptimeSeconds=${this.uptimeSeconds}
-          .fallback=${this.fallbackActive}
-        ></metrics-panel>
+        <div class="app-header">
+          <div class="header-left">
+             <vu-meter
+              .inputLevel=${this.inputLevel}
+              .outputLevel=${this.outputLevel}
+              .isActive=${this.isRecording || this.status === 'Parle...'}
+             ></vu-meter>
+          </div>
+          
+          <div class="header-center">
+             <status-display
+              .status=${this.status}
+              .error=${this.error}
+              .isProcessing=${this.isProcessingMemory}
+              .fallbackMessage=${this.fallbackMessage}
+              .nextRetrySeconds=${this.nextRetrySeconds}
+              @clear-error=${this._clearError}
+             ></status-display>
+             
+             <metrics-panel
+              .avgLatency=${this.avgLatencyMetric}
+              .errorRate=${this.errorRateMetric}
+              .uptimeSeconds=${this.uptimeSeconds}
+              .fallback=${this.fallbackActive}
+             ></metrics-panel>
+          </div>
 
-        <quota-indicator
-          .limit=${this.quotaLimit}
-          .used=${this.quotaUsed}
-          .resetTimestamp=${this.quotaResetAt}
-          .degraded=${this.fallbackActive || (this.quotaUsed / this.quotaLimit) > 0.8}
-        ></quota-indicator>
-
-        <div class="top-bar">
-           <vu-meter
-            .inputLevel=${this.inputLevel}
-            .outputLevel=${this.outputLevel}
-            .isActive=${this.isRecording || this.status === 'Parle...'}
-          ></vu-meter>
-           <latency-indicator
-            .latency=${this.latency}
-            .isActive=${this.isRecording}
-          ></latency-indicator>
+          <div class="header-right">
+             <latency-indicator
+              .latency=${this.latency}
+              .isActive=${this.isRecording}
+             ></latency-indicator>
+          </div>
         </div>
 
         <div class="chat-container" id="chatContainer">
@@ -1158,15 +1270,6 @@ export class GdmLiveAudio extends LitElement {
             `;
           })}
         </div>
-
-        <status-display
-          .status=${this.status}
-          .error=${this.error}
-          .isProcessing=${this.isProcessingMemory}
-          .fallbackMessage=${this.fallbackMessage}
-          .nextRetrySeconds=${this.nextRetrySeconds}
-          @clear-error=${this._clearError}
-        ></status-display>
 
         <control-panel
           .isRecording=${this.isRecording}
