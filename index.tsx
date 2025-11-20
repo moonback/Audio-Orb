@@ -9,6 +9,7 @@ import {customElement, state} from 'lit/decorators.js';
 import {createBlob, decode, decodeAudioData} from './utils';
 import {Personality, PersonalityManager} from './personality';
 import {MemoryManager, StructuredMemory, MemoryCategory} from './memory';
+import {SYSTEM_BASE_INSTRUCTIONS} from './system-instructions';
 import {debouncedStorage} from './utils/storage';
 import {ThrottledRAF} from './utils/performance';
 import {deviceDetector} from './utils/device-detection';
@@ -902,16 +903,18 @@ export class GdmLiveAudio extends LitElement {
         this.updateStatus(`Reconnexion (${this.retryCount})...`);
     }
 
-    const CODE_DE_CONDUITE = `Tu t'appelles NeuroChat...`; // (Truncated for brevity, keep existing text in real file if needed or just reference personality)
+    // Instructions de base non modifiables (toujours appliquées en premier)
+    let systemInstruction = SYSTEM_BASE_INSTRUCTIONS;
     
+    // Personnalité choisie par l'utilisateur
     const currentPersonality = this.personalityManager.getById(this.selectedPersonalityId) || this.personalityManager.getAll()[0];
-    let systemInstruction = `${currentPersonality.prompt} Veuillez parler avec un ton, un accent ou un style ${this.selectedStyle}.`;
+    systemInstruction += `\n\n---\n\nPERSONNALITÉ ACTIVE:\n${currentPersonality.prompt}\n\nVeuillez parler avec un ton, un accent ou un style ${this.selectedStyle}.`;
 
     // Memory injection
     let memoryText = this.memoryManager.toText();
     if (memoryText && memoryText.trim().length > 0) {
        // (Semantic search logic omitted for simplicity, kept basic injection)
-       systemInstruction += `\n\nINFORMATIONS SUR L'UTILISATEUR:\n${memoryText}`;
+       systemInstruction += `\n\n---\n\nINFORMATIONS SUR L'UTILISATEUR:\n${memoryText}`;
     }
 
     const config: any = {
