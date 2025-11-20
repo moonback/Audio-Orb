@@ -32,7 +32,11 @@ export class GeminiClient extends EventTarget {
             this.dispatchEvent(new CustomEvent('disconnected'));
           },
           onerror: (err) => {
-            const detail = (err as Error)?.message ?? 'Erreur inconnue';
+            const detail = err instanceof Error
+              ? err.message
+              : typeof err === 'string'
+                ? err
+                : (err && (err as any).message) || 'Erreur inconnue';
             logger.error('gemini_stream_error', { detail });
             this.dispatchEvent(new CustomEvent('error', { detail }));
           }

@@ -50,7 +50,9 @@ export class DeviceDetector {
 
     // Detect GPU tier
     const canvas = document.createElement('canvas');
-    const gl = canvas.getContext('webgl') || canvas.getContext('webgl2') || canvas.getContext('experimental-webgl');
+    const gl = (canvas.getContext('webgl') ||
+      canvas.getContext('webgl2') ||
+      canvas.getContext('experimental-webgl')) as (WebGLRenderingContext | WebGL2RenderingContext | null);
     let gpuTier: 'high' | 'medium' | 'low' = 'medium';
     
     if (gl) {

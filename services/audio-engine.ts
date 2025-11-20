@@ -223,7 +223,7 @@ export class AudioEngine extends EventTarget {
     if (!this.outputElement) {
       this.outputElement = new Audio();
       this.outputElement.autoplay = true;
-      this.outputElement.playsInline = true;
+      this.outputElement.setAttribute('playsinline', 'true');
       this.outputElement.muted = false;
       this.outputElement.srcObject = this.mediaStreamDestination.stream;
     }
