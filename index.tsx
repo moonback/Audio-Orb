@@ -414,6 +414,11 @@ export class GdmLiveAudio extends LitElement {
       .visual-layer {
         pointer-events: none !important;
       }
+      
+      /* Cacher le mini-waveform sur mobile */
+      mini-waveform {
+        display: none !important;
+      }
     }
   `;
 
