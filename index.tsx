@@ -19,7 +19,6 @@ import './components/control-panel';
 import './components/status-display';
 import './components/latency-indicator';
 import './components/vu-meter';
-import './components/help-overlay';
 import './components/onboarding-modal';
 import './components/mini-waveform';
 import './components/metrics-panel';
@@ -48,7 +47,6 @@ export class GdmLiveAudio extends LitElement {
   @state() structuredMemory: StructuredMemory = {preferences: [], facts: [], context: []};
   @state() isProcessingMemory = false;
   @state() textScale = 1;
-  @state() showHelp = false;
   @state() showOnboarding = false;
   @state() onboardingStep = 0;
   
@@ -85,26 +83,9 @@ export class GdmLiveAudio extends LitElement {
   private personalityManager = new PersonalityManager();
   private memoryManager = new MemoryManager();
   private readonly onboardingSteps = [
-    { title: 'Bienvenue dans NeuroChat', description: 'Activez le micro (Espace) et regardez l’orbite réagir à votre voix.' },
+    { title: 'Bienvenue dans NeuroChat', description: 'Activez le micro (Espace) et regardez l\'orbite réagir à votre voix.' },
     { title: 'Panneaux intelligents', description: 'Utilisez S pour ouvrir les réglages, ajuster la voix, la mémoire ou les périphériques.' },
-    { title: 'Aide & Export', description: 'Appuyez sur H pour l’aide, D pour exporter vos conversations.' }
-  ];
-  private readonly helpSections = [
-    {
-      title: 'Commandes',
-      description: 'Raccourcis clavier indispensables.',
-      tips: ['Espace: démarrer / arrêter le micro', 'S: ouvrir les paramètres', 'R: réinitialiser la session', 'H: ouvrir cette aide']
-    },
-    {
-      title: 'Statuts',
-      description: 'Comprendre les indicateurs.',
-      tips: ['Badge: état de connexion Gemini', 'Latence: temps aller-retour audio', 'Quota: suivi de votre budget API']
-    },
-    {
-      title: 'Mémoire',
-      description: 'Gardez la maîtrise de vos données.',
-      tips: ['Export JSON depuis Paramètres', 'Suppression par catégorie', 'Purge totale à tout moment']
-    }
+    { title: 'Export', description: 'Appuyez sur D pour exporter vos conversations.' }
   ];
   private readonly retryDelays = [2000, 5000, 10000, 30000];
   private readonly fallbackRetryDelay = 60000;
@@ -876,13 +857,6 @@ export class GdmLiveAudio extends LitElement {
     }
   }
 
-  private _openHelpOverlay() {
-    this.showHelp = true;
-  }
-
-  private _closeHelpOverlay() {
-    this.showHelp = false;
-  }
 
   private _completeOnboarding() {
     this.showOnboarding = false;
@@ -1167,10 +1141,6 @@ export class GdmLiveAudio extends LitElement {
           this.toggleSettings();
           return;
         }
-        if (this.showHelp) {
-          this.showHelp = false;
-          return;
-        }
       }
       
       if (e.code === 'KeyS' && !e.shiftKey && !e.ctrlKey && !e.metaKey) {
@@ -1192,10 +1162,6 @@ export class GdmLiveAudio extends LitElement {
         }
       }
 
-      if (e.code === 'KeyH' && !e.shiftKey && !e.ctrlKey && !e.metaKey) {
-        e.preventDefault();
-        this.showHelp = !this.showHelp;
-      }
     };
     document.addEventListener('keydown', this.keyboardHandler);
   }
@@ -1312,7 +1278,6 @@ export class GdmLiveAudio extends LitElement {
           @stop-recording=${this.stopRecording}
           @reset=${this.reset}
           @download-transcript=${this._downloadTranscript}
-          @open-help=${this._openHelpOverlay}
         ></control-panel>
 
         <mini-waveform
@@ -1360,12 +1325,6 @@ export class GdmLiveAudio extends LitElement {
           .audioPreset=${this.audioPreset}
         ></settings-panel>
       </div>
-
-      <help-overlay
-        .open=${this.showHelp}
-        .sections=${this.helpSections}
-        @close=${this._closeHelpOverlay}
-      ></help-overlay>
 
       <onboarding-modal
         .open=${this.showOnboarding}
