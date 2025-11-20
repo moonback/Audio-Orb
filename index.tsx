@@ -18,6 +18,11 @@ import './components/control-panel';
 import './components/status-display';
 import './components/latency-indicator';
 import './components/vu-meter';
+import './components/quota-indicator';
+import './components/help-overlay';
+import './components/onboarding-modal';
+import './components/mini-waveform';
+import './components/metrics-panel';
 import {Analyser} from './analyser';
 import './visual-3d';
 
@@ -25,6 +30,9 @@ import './visual-3d';
 import { audioService } from './services/audio-engine';
 import { GeminiClient } from './services/gemini-client';
 import { Modality } from '@google/genai';
+type DeviceOption = { deviceId: string; label: string };
+import { telemetry, MetricsSnapshot } from './services/telemetry';
+import { logger } from './services/logger';
 
 @customElement('gdm-live-audio')
 export class GdmLiveAudio extends LitElement {
@@ -39,6 +47,10 @@ export class GdmLiveAudio extends LitElement {
   @state() memory = '';
   @state() structuredMemory: StructuredMemory = {preferences: [], facts: [], context: []};
   @state() isProcessingMemory = false;
+  @state() textScale = 1;
+  @state() showHelp = false;
+  @state() showOnboarding = false;
+  @state() onboardingStep = 0;
   
   // Audio Equalizer State
   @state() bassGain = 0; // -20 to +20 dB
@@ -56,10 +68,49 @@ export class GdmLiveAudio extends LitElement {
   @state() latency = 0;
   @state() inputLevel = 0;
   @state() outputLevel = 0;
+  @state() fallbackMessage = '';
+  @state() nextRetrySeconds = 0;
+  @state() fallbackActive = false;
+  @state() quotaUsed = 0;
+  @state() quotaLimit = Number(process.env.GEMINI_DAILY_QUOTA || '120');
+  @state() quotaResetAt = 0;
+  @state() avgLatencyMetric = 0;
+  @state() errorRateMetric = 0;
+  @state() uptimeSeconds = 0;
+  @state() inputDevices: DeviceOption[] = [{ deviceId: 'default', label: 'Micro par défaut' }];
+  @state() outputDevices: DeviceOption[] = [{ deviceId: 'default', label: 'Sortie par défaut' }];
+  @state() selectedInputDeviceId = 'default';
+  @state() selectedOutputDeviceId = 'default';
+  @state() canSelectOutput = false;
+  @state() isCalibratingInput = false;
 
   private geminiClient: GeminiClient;
   private personalityManager = new PersonalityManager();
   private memoryManager = new MemoryManager();
+  private readonly onboardingSteps = [
+    { title: 'Bienvenue dans NeuroChat', description: 'Activez le micro (Espace) et regardez l’orbite réagir à votre voix.' },
+    { title: 'Panneaux intelligents', description: 'Utilisez S pour ouvrir les réglages, ajuster la voix, la mémoire ou les périphériques.' },
+    { title: 'Aide & Focus', description: 'Double-cliquez pour le mode Zen, H pour l’aide, D pour exporter vos transcripts.' }
+  ];
+  private readonly helpSections = [
+    {
+      title: 'Commandes',
+      description: 'Raccourcis clavier indispensables.',
+      tips: ['Espace: démarrer / arrêter le micro', 'S: ouvrir les paramètres', 'R: réinitialiser la session', 'H: ouvrir cette aide']
+    },
+    {
+      title: 'Statuts',
+      description: 'Comprendre les indicateurs.',
+      tips: ['Badge: état de connexion Gemini', 'Latence: temps aller-retour audio', 'Quota: suivi de votre budget API']
+    },
+    {
+      title: 'Mémoire',
+      description: 'Gardez la maîtrise de vos données.',
+      tips: ['Export JSON depuis Paramètres', 'Suppression par catégorie', 'Purge totale à tout moment']
+    }
+  ];
+  private readonly retryDelays = [2000, 5000, 10000, 30000];
+  private readonly fallbackRetryDelay = 60000;
 
   // Audio Engine Visualisation Bindings
   @state() inputNode: AudioNode | null = null;
@@ -78,6 +129,16 @@ export class GdmLiveAudio extends LitElement {
   private keyboardHandler: ((e: KeyboardEvent) => void) | null = null;
   private adaptiveBuffer: AdaptiveBufferManager;
   private deviceInfo: ReturnType<typeof deviceDetector.detect>;
+  private handleTelemetryUpdate = (event: Event) => {
+    const detail = (event as CustomEvent<MetricsSnapshot>).detail;
+    this.avgLatencyMetric = detail.avgLatency;
+    this.errorRateMetric = detail.errorRate;
+    this.uptimeSeconds = detail.uptimeSeconds;
+    this.fallbackActive = detail.fallbackActive;
+  };
+  private retryCountdownInterval: any = null;
+  private quotaState = { used: 0, resetAt: 0 };
+  private deviceChangeHandler: (() => void) | null = null;
 
   static styles = css`
     :host {
@@ -87,8 +148,9 @@ export class GdmLiveAudio extends LitElement {
       height: 100vh;
       overflow: hidden;
       position: relative;
-      background: #000;
-      color: white;
+      background: var(--background-color, #000);
+      color: var(--text-main, #e8eaed);
+      font-size: calc(16px * var(--text-scale, 1));
       
       /* Global Design Tokens */
       --glass-bg: rgba(10, 10, 15, 0.6);
@@ -96,6 +158,12 @@ export class GdmLiveAudio extends LitElement {
       --primary-color: #8ab4f8;
       --text-main: #e8eaed;
       --text-dim: #9aa0a6;
+      --panel-glass-bg: rgba(10, 10, 15, 0.6);
+      --panel-border: rgba(255, 255, 255, 0.08);
+      --chat-user-bg: linear-gradient(135deg, #6366f1, #3b82f6);
+      --chat-user-text: #ffffff;
+      --chat-ai-bg: rgba(255, 255, 255, 0.1);
+      --chat-ai-text: #e8eaed;
     }
 
     * {
@@ -172,17 +240,17 @@ export class GdmLiveAudio extends LitElement {
 
     .chat-bubble.user {
       align-self: flex-end;
-      background: linear-gradient(135deg, #6366f1, #3b82f6);
-      color: white;
+      background: var(--chat-user-bg);
+      color: var(--chat-user-text);
       border-bottom-right-radius: 4px;
     }
 
     .chat-bubble.ai {
       align-self: flex-start;
-      background: rgba(255, 255, 255, 0.1);
+      background: var(--chat-ai-bg);
       backdrop-filter: blur(10px);
-      border: 1px solid rgba(255, 255, 255, 0.1);
-      color: #e8eaed;
+      border: 1px solid var(--glass-border);
+      color: var(--chat-ai-text);
       border-bottom-left-radius: 4px;
     }
 
@@ -237,12 +305,21 @@ export class GdmLiveAudio extends LitElement {
     this.selectedStyle = debouncedStorage.getItem('gdm-style') || 'Naturel';
     this.playbackRate = parseFloat(debouncedStorage.getItem('gdm-rate') || '1.0');
     this.detune = parseFloat(debouncedStorage.getItem('gdm-detune') || '0');
+    const storedScale = parseFloat(debouncedStorage.getItem('gdm-text-scale') || '1');
+    if (!Number.isNaN(storedScale)) {
+      this.textScale = storedScale;
+    }
+    this.selectedInputDeviceId = debouncedStorage.getItem('gdm-input-device') || 'default';
+    this.selectedOutputDeviceId = debouncedStorage.getItem('gdm-output-device') || 'default';
     // Load structured memory
     this.structuredMemory = this.memoryManager.load();
     this.memory = this.memoryManager.toText();
     this.bassGain = parseFloat(debouncedStorage.getItem('gdm-bass') || '0');
     this.trebleGain = parseFloat(debouncedStorage.getItem('gdm-treble') || '0');
     this.audioPreset = debouncedStorage.getItem('gdm-audio-preset') || 'Personnalisé';
+    const onboardingDone = debouncedStorage.getItem('gdm-onboarding-done');
+    this.showOnboarding = !onboardingDone;
+    this.applyThemeVariables();
     
     // Init Personalities
     this.personalities = this.personalityManager.getAll();
@@ -255,6 +332,14 @@ export class GdmLiveAudio extends LitElement {
     // Initialize Gemini Service
     const apiKey = process.env.GEMINI_API_KEY || '';
     this.geminiClient = new GeminiClient(apiKey);
+    this.canSelectOutput = audioService.canSelectOutputDevice;
+    this.loadQuotaState();
+    telemetry.addEventListener('metrics', this.handleTelemetryUpdate);
+    if (navigator.mediaDevices) {
+      this.refreshDevices();
+      this.deviceChangeHandler = () => this.refreshDevices();
+      navigator.mediaDevices.addEventListener('devicechange', this.deviceChangeHandler);
+    }
 
     this.startVUMeterUpdates();
     this.startLatencyUpdates();
@@ -278,12 +363,22 @@ export class GdmLiveAudio extends LitElement {
     // Gemini -> UI / Audio Engine
     this.geminiClient.addEventListener('status', (e: any) => {
         this.updateStatus(e.detail);
+        if (e.detail === 'Connecté') {
+          this.exitFallback();
+          this.retryCount = 0;
+          this.clearRetryCountdown();
+        }
     });
 
     this.geminiClient.addEventListener('error', (e: any) => {
         this.updateError(e.detail);
+        telemetry.logError(e.detail);
         this.updateStatus('Erreur');
     });
+    this.geminiClient.addEventListener('quota', (e: any) => {
+        this.updateQuotaFromUsage(e.detail);
+    });
+    this.geminiClient.addEventListener('disconnected', () => this.handleDisconnect());
 
     this.geminiClient.addEventListener('audio-response', async (e: any) => {
         // Handle audio playback through audio service
@@ -294,6 +389,7 @@ export class GdmLiveAudio extends LitElement {
             const currentTime = performance.now();
             this.latency = currentTime - this.lastAudioSendTime;
             this.lastAudioSendTime = 0;
+            telemetry.logLatency(this.latency);
         }
 
         // Decode and play
@@ -364,6 +460,146 @@ export class GdmLiveAudio extends LitElement {
     } catch (e) {
         console.error("Failed to init audio service", e);
         this.updateError("Erreur initialisation audio");
+    }
+  }
+
+  private applyThemeVariables() {
+    this.style.setProperty('--text-scale', this.textScale.toString());
+  }
+
+  private computeNextResetTimestamp() {
+    const date = new Date();
+    date.setHours(24, 0, 0, 0);
+    return date.getTime();
+  }
+
+  private loadQuotaState() {
+    const raw = debouncedStorage.getItem('gdm-quota-state');
+    let parsed = { used: 0, resetAt: this.computeNextResetTimestamp() };
+    if (raw) {
+      try {
+        const data = JSON.parse(raw);
+        parsed = { used: data.used || 0, resetAt: data.resetAt || this.computeNextResetTimestamp() };
+      } catch (err) {
+        console.warn('Impossible de lire le quota local', err);
+      }
+    }
+    if (Date.now() > parsed.resetAt) {
+      parsed = { used: 0, resetAt: this.computeNextResetTimestamp() };
+    }
+    this.quotaState = parsed;
+    this.quotaUsed = parsed.used;
+    this.quotaResetAt = parsed.resetAt;
+  }
+
+  private persistQuotaState() {
+    this.quotaState = { used: this.quotaUsed, resetAt: this.quotaResetAt };
+    debouncedStorage.setItem('gdm-quota-state', JSON.stringify(this.quotaState));
+  }
+
+  private registerQuotaUsage(deltaTokens?: number) {
+    const increment = deltaTokens ? Math.max(1, Math.round(deltaTokens / 1000)) : 1;
+    this.quotaUsed = Math.min(this.quotaLimit, this.quotaUsed + increment);
+    if (Date.now() > this.quotaResetAt) {
+      this.quotaResetAt = this.computeNextResetTimestamp();
+      this.quotaUsed = increment;
+    }
+    this.persistQuotaState();
+  }
+
+  private updateQuotaFromUsage(usage: any) {
+    if (!usage) return;
+    const delta = usage.totalTokenCount ?? usage.candidatesTokenCount ?? usage.promptTokenCount ?? 0;
+    this.registerQuotaUsage(delta);
+  }
+
+  private startRetryCountdown(durationMs: number) {
+    this.nextRetrySeconds = Math.ceil(durationMs / 1000);
+    if (this.retryCountdownInterval) {
+      clearInterval(this.retryCountdownInterval);
+    }
+    this.retryCountdownInterval = setInterval(() => {
+      this.nextRetrySeconds = Math.max(0, this.nextRetrySeconds - 1);
+      if (this.nextRetrySeconds === 0 && this.retryCountdownInterval) {
+        clearInterval(this.retryCountdownInterval);
+        this.retryCountdownInterval = null;
+      }
+    }, 1000);
+  }
+
+  private clearRetryCountdown() {
+    if (this.retryCountdownInterval) {
+      clearInterval(this.retryCountdownInterval);
+      this.retryCountdownInterval = null;
+    }
+    this.nextRetrySeconds = 0;
+  }
+
+  private scheduleReconnect(delayMs: number) {
+    if (this.retryTimeout) {
+      clearTimeout(this.retryTimeout);
+    }
+    this.startRetryCountdown(delayMs);
+    this.retryTimeout = setTimeout(() => this.initSession(), delayMs);
+  }
+
+  private activateFallback(message: string) {
+    this.fallbackActive = true;
+    this.fallbackMessage = message;
+    telemetry.setFallback(true, message);
+  }
+
+  private exitFallback() {
+    if (this.fallbackActive) {
+      telemetry.setFallback(false);
+    }
+    this.fallbackActive = false;
+    this.fallbackMessage = '';
+    this.clearRetryCountdown();
+  }
+
+  private handleDisconnect() {
+    if (!this.isRecording) {
+      this.updateStatus('Reconnexion en cours...');
+    }
+    this.retryCount = 0;
+    this.scheduleReconnect(this.retryDelays[0]);
+  }
+
+  private async refreshDevices() {
+    try {
+      const devices = await navigator.mediaDevices.enumerateDevices();
+      const inputs = devices
+        .filter(device => device.kind === 'audioinput')
+        .map((device, index) => ({
+          deviceId: device.deviceId || 'default',
+          label: device.label || `Micro ${index + 1}`
+        }));
+      const outputsList = devices
+        .filter(device => device.kind === 'audiooutput')
+        .map((device, index) => ({
+          deviceId: device.deviceId || 'default',
+          label: device.label || `Sortie ${index + 1}`
+        }));
+      const inputMap = new Map<string, DeviceOption>();
+      inputMap.set('default', { deviceId: 'default', label: 'Micro par défaut' });
+      inputs.forEach(device => {
+        if (!inputMap.has(device.deviceId)) {
+          inputMap.set(device.deviceId, device);
+        }
+      });
+      this.inputDevices = Array.from(inputMap.values());
+
+      const outputMap = new Map<string, DeviceOption>();
+      outputMap.set('default', { deviceId: 'default', label: 'Sortie par défaut' });
+      outputsList.forEach(device => {
+        if (!outputMap.has(device.deviceId)) {
+          outputMap.set(device.deviceId, device);
+        }
+      });
+      this.outputDevices = this.canSelectOutput ? Array.from(outputMap.values()) : [{ deviceId: 'default', label: 'Sortie par défaut' }];
+    } catch (err: any) {
+      logger.warn('device_enumeration_failed', { message: err?.message });
     }
   }
   
@@ -456,9 +692,66 @@ export class GdmLiveAudio extends LitElement {
     debouncedStorage.setItem('gdm-treble', String(this.trebleGain));
   }
 
+  private _handleTextScaleChange(e: CustomEvent) {
+    this.textScale = e.detail;
+    debouncedStorage.setItem('gdm-text-scale', String(this.textScale));
+    this.applyThemeVariables();
+  }
+
+  private async _handleInputDeviceChange(e: CustomEvent) {
+    const deviceId = e.detail;
+    this.selectedInputDeviceId = deviceId;
+    debouncedStorage.setItem('gdm-input-device', deviceId);
+    if (this.isRecording) {
+      await this.stopRecording();
+      await this.startRecording();
+    }
+  }
+
+  private async _handleOutputDeviceChange(e: CustomEvent) {
+    if (!this.canSelectOutput) return;
+    const deviceId = e.detail;
+    this.selectedOutputDeviceId = deviceId;
+    debouncedStorage.setItem('gdm-output-device', deviceId);
+    try {
+      await audioService.setOutputDevice(deviceId);
+      this.updateStatus('Sortie audio mise à jour');
+    } catch (err: any) {
+      this.updateError('Impossible de changer de sortie audio');
+      console.error(err);
+    }
+  }
+
+  private async _handleCalibrateInput() {
+    if (this.isCalibratingInput) return;
+    this.isCalibratingInput = true;
+    this.updateStatus('Calibration micro...');
+    try {
+      const gain = await audioService.autoCalibrateInputGain();
+      this.updateStatus(`Gain ajusté (${gain.toFixed(2)}x)`);
+    } catch (err: any) {
+      console.error('Calibration échouée', err);
+      this.updateError('Calibration échouée');
+    } finally {
+      this.isCalibratingInput = false;
+    }
+  }
+
+  private _openHelpOverlay() {
+    this.showHelp = true;
+  }
+
+  private _closeHelpOverlay() {
+    this.showHelp = false;
+  }
+
+  private _completeOnboarding() {
+    this.showOnboarding = false;
+    debouncedStorage.setItem('gdm-onboarding-done', 'true');
+  }
+
   // Retry logic state
   private retryCount = 0;
-  private maxRetries = 3;
   private retryTimeout: any = null;
 
   private async initSession() {
@@ -501,11 +794,18 @@ export class GdmLiveAudio extends LitElement {
     try {
         await this.geminiClient.connect(model, config);
         this.retryCount = 0;
-    } catch (e) {
-        // Error handled in event listener
-        if (this.retryCount < this.maxRetries) {
+        this.exitFallback();
+    } catch (e: any) {
+        logger.error('gemini_session_init_failed', { message: e?.message });
+        if (this.retryCount < this.retryDelays.length) {
+            const delay = this.retryDelays[this.retryCount];
             this.retryCount++;
-            this.retryTimeout = setTimeout(() => this.initSession(), 3000);
+            this.scheduleReconnect(delay);
+            this.updateStatus(`Nouvelle tentative dans ${Math.round(delay / 1000)}s`);
+        } else {
+            this.activateFallback('Gemini est temporairement indisponible');
+            this.scheduleReconnect(this.fallbackRetryDelay);
+            this.updateStatus('Mode fallback');
         }
     }
   }
@@ -567,7 +867,8 @@ export class GdmLiveAudio extends LitElement {
     if (this.isRecording) return;
     this.updateStatus('Accès micro...');
     try {
-      await audioService.startRecording();
+      const deviceId = this.selectedInputDeviceId === 'default' ? undefined : this.selectedInputDeviceId;
+      await audioService.startRecording(deviceId);
       this.isRecording = true;
       this.updateStatus('Écoute...');
     } catch (err: any) {
@@ -599,7 +900,7 @@ export class GdmLiveAudio extends LitElement {
       // Let's expose client in GeminiClient wrapper. (I made `client` private).
       // I will access it via casting for now to keep it simple.
       
-      await this.memoryManager.updateFromTranscript(transcriptText, (this.geminiClient as any).client);
+      await this.memoryManager.updateFromTranscript(transcriptText, this.geminiClient.rawClient);
       
       this.structuredMemory = this.memoryManager.load();
       this.memory = this.memoryManager.toText();
@@ -723,6 +1024,11 @@ export class GdmLiveAudio extends LitElement {
       if (e.code === 'Escape') {
         if (this.showSettings) {
           this.toggleSettings();
+          return;
+        }
+        if (this.showHelp) {
+          this.showHelp = false;
+          return;
         }
       }
       
@@ -743,6 +1049,11 @@ export class GdmLiveAudio extends LitElement {
           e.preventDefault();
           this._downloadTranscript();
         }
+      }
+
+      if (e.code === 'KeyH' && !e.shiftKey && !e.ctrlKey && !e.metaKey) {
+        e.preventDefault();
+        this.showHelp = !this.showHelp;
       }
     };
     document.addEventListener('keydown', this.keyboardHandler);
@@ -767,6 +1078,15 @@ export class GdmLiveAudio extends LitElement {
     if (this.retryTimeout) {
       clearTimeout(this.retryTimeout);
       this.retryTimeout = null;
+    }
+    if (this.retryCountdownInterval) {
+      clearInterval(this.retryCountdownInterval);
+      this.retryCountdownInterval = null;
+    }
+    telemetry.removeEventListener('metrics', this.handleTelemetryUpdate);
+    if (navigator.mediaDevices && this.deviceChangeHandler) {
+      navigator.mediaDevices.removeEventListener('devicechange', this.deviceChangeHandler);
+      this.deviceChangeHandler = null;
     }
   }
   
@@ -801,6 +1121,20 @@ export class GdmLiveAudio extends LitElement {
         
         <div class="zen-hint">Double-cliquez pour quitter le mode Zen</div>
         
+        <metrics-panel
+          .avgLatency=${this.avgLatencyMetric}
+          .errorRate=${this.errorRateMetric}
+          .uptimeSeconds=${this.uptimeSeconds}
+          .fallback=${this.fallbackActive}
+        ></metrics-panel>
+
+        <quota-indicator
+          .limit=${this.quotaLimit}
+          .used=${this.quotaUsed}
+          .resetTimestamp=${this.quotaResetAt}
+          .degraded=${this.fallbackActive || (this.quotaUsed / this.quotaLimit) > 0.8}
+        ></quota-indicator>
+
         <div class="top-bar">
            <vu-meter
             .inputLevel=${this.inputLevel}
@@ -829,18 +1163,26 @@ export class GdmLiveAudio extends LitElement {
           .status=${this.status}
           .error=${this.error}
           .isProcessing=${this.isProcessingMemory}
+          .fallbackMessage=${this.fallbackMessage}
+          .nextRetrySeconds=${this.nextRetrySeconds}
           @clear-error=${this._clearError}
         ></status-display>
 
         <control-panel
           .isRecording=${this.isRecording}
           .isProcessingMemory=${this.isProcessingMemory}
+          .fallbackMode=${this.fallbackActive}
           @toggle-settings=${this.toggleSettings}
           @start-recording=${this.startRecording}
           @stop-recording=${this.stopRecording}
           @reset=${this.reset}
           @download-transcript=${this._downloadTranscript}
+          @open-help=${this._openHelpOverlay}
         ></control-panel>
+
+        <mini-waveform
+          .inputNode=${this.inputNode}
+        ></mini-waveform>
 
         <settings-panel
           .show=${this.showSettings}
@@ -852,6 +1194,13 @@ export class GdmLiveAudio extends LitElement {
           .detune=${this.detune}
           .memory=${this.memory}
           .structuredMemory=${this.structuredMemory}
+          .textScale=${this.textScale}
+          .inputDevices=${this.inputDevices}
+          .outputDevices=${this.outputDevices}
+          .selectedInputDeviceId=${this.selectedInputDeviceId}
+          .selectedOutputDeviceId=${this.selectedOutputDeviceId}
+          .canSelectOutput=${this.canSelectOutput}
+          .isCalibratingInput=${this.isCalibratingInput}
           @close-settings=${this.toggleSettings}
           @clear-memory=${this.clearMemory}
           @export-memory=${this.exportMemory}
@@ -867,11 +1216,29 @@ export class GdmLiveAudio extends LitElement {
           @bass-changed=${this._handleBassChange}
           @treble-changed=${this._handleTrebleChange}
           @audio-preset-changed=${this._handleAudioPresetChange}
+          @text-scale-changed=${this._handleTextScaleChange}
+          @input-device-changed=${this._handleInputDeviceChange}
+          @output-device-changed=${this._handleOutputDeviceChange}
+          @calibrate-input=${this._handleCalibrateInput}
           .bassGain=${this.bassGain}
           .trebleGain=${this.trebleGain}
           .audioPreset=${this.audioPreset}
         ></settings-panel>
       </div>
+
+      <help-overlay
+        .open=${this.showHelp}
+        .sections=${this.helpSections}
+        @close=${this._closeHelpOverlay}
+      ></help-overlay>
+
+      <onboarding-modal
+        .open=${this.showOnboarding}
+        .steps=${this.onboardingSteps}
+        @complete=${this._completeOnboarding}
+        @skip=${this._completeOnboarding}
+      ></onboarding-modal>
     `;
   }
 }
+

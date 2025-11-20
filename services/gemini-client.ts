@@ -1,9 +1,11 @@
 import { GoogleGenAI, Session, LiveServerMessage, Modality } from '@google/genai';
+import { logger } from './logger';
 
 export class GeminiClient extends EventTarget {
   private client: GoogleGenAI;
   private session: Session | null = null;
   public isConnected = false;
+  private lastUsageMetadata: Record<string, number> | null = null;
 
   constructor(apiKey: string) {
     super();
@@ -12,31 +14,32 @@ export class GeminiClient extends EventTarget {
 
   async connect(model: string, config: any) {
     try {
-      console.log('[GeminiClient] Connecting to model:', model);
+      logger.info('gemini_connecting', { model });
       this.session = await this.client.live.connect({
         model,
         config,
         callbacks: {
           onopen: () => {
-            console.log('[GeminiClient] Session opened');
+            logger.info('gemini_session_opened', { model });
             this.isConnected = true;
             this.dispatchEvent(new CustomEvent('status', { detail: 'Connecté' }));
           },
           onmessage: (msg: LiveServerMessage) => this.handleMessage(msg),
           onclose: (e) => {
-            console.log('[GeminiClient] Session closed', e);
+            logger.warn('gemini_session_closed', { reason: e?.reason, code: (e as any)?.code });
             this.isConnected = false;
             this.dispatchEvent(new CustomEvent('status', { detail: 'Déconnecté' }));
             this.dispatchEvent(new CustomEvent('disconnected'));
           },
           onerror: (err) => {
-            console.error('[GeminiClient] Error:', err);
-            this.dispatchEvent(new CustomEvent('error', { detail: err.message }));
+            const detail = (err as Error)?.message ?? 'Erreur inconnue';
+            logger.error('gemini_stream_error', { detail });
+            this.dispatchEvent(new CustomEvent('error', { detail }));
           }
         }
       });
     } catch (e: any) {
-      console.error('[GeminiClient] Connection failed:', e);
+      logger.error('gemini_connection_failed', { detail: e?.message });
       this.dispatchEvent(new CustomEvent('error', { detail: e.message }));
       throw e;
     }
@@ -48,6 +51,13 @@ export class GeminiClient extends EventTarget {
     if (!serverContent) {
         // Handle tool calls or other message types if necessary
         return;
+    }
+
+    // Metrics / quota
+    const usage = (serverContent as any).usageMetadata;
+    if (usage) {
+      this.lastUsageMetadata = usage;
+      this.dispatchEvent(new CustomEvent('quota', { detail: usage }));
     }
 
     // Audio
@@ -104,6 +114,14 @@ export class GeminiClient extends EventTarget {
         this.session = null;
     }
     this.isConnected = false;
+  }
+
+  get rawClient() {
+    return this.client;
+  }
+
+  get usageMetadata() {
+    return this.lastUsageMetadata;
   }
 }
 

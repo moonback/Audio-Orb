@@ -5,6 +5,7 @@ import {StructuredMemory, MemoryCategory} from '../memory';
 
 const VOICES = ['Orus', 'Puck', 'Charon', 'Kore', 'Fenrir', 'Zephyr', 'Aoede'];
 const STYLES = ['Naturel', 'Professionnel', 'Joyeux', 'Accent britannique', 'Accent français', 'Chuchotement', 'Enthousiaste'];
+type DeviceOption = { deviceId: string; label: string };
 
 @customElement('settings-panel')
 export class SettingsPanel extends LitElement {
@@ -24,6 +25,13 @@ export class SettingsPanel extends LitElement {
   @property({type: Number}) bassGain = 0;
   @property({type: Number}) trebleGain = 0;
   @property({type: String}) audioPreset = 'Personnalisé';
+  @property({type: Number}) textScale = 1;
+  @property({type: Array}) inputDevices: DeviceOption[] = [];
+  @property({type: Array}) outputDevices: DeviceOption[] = [];
+  @property({type: String}) selectedInputDeviceId = 'default';
+  @property({type: String}) selectedOutputDeviceId = 'default';
+  @property({type: Boolean}) canSelectOutput = false;
+  @property({type: Boolean}) isCalibratingInput = false;
 
   @state() isCreatingPersonality = false;
   @state() newPersonalityName = '';
@@ -166,6 +174,13 @@ export class SettingsPanel extends LitElement {
       background: rgba(138, 180, 248, 0.1);
       padding: 2px 6px;
       border-radius: 4px;
+    }
+
+    .device-select {
+      margin-top: 12px;
+      display: flex;
+      flex-direction: column;
+      gap: 8px;
     }
 
     select, input[type="text"] {
@@ -663,6 +678,23 @@ export class SettingsPanel extends LitElement {
 
           <div class="setting-group">
             <label class="setting-label">
+              <span>Taille du texte</span>
+              <span class="setting-value">${Math.round(this.textScale * 100)}%</span>
+            </label>
+            <input
+              type="range"
+              min="0.9"
+              max="1.4"
+              step="0.05"
+              .value=${String(this.textScale)}
+              @input=${(e: any) => this._dispatch('text-scale-changed', parseFloat(e.target.value))}
+              aria-label="Taille du texte"
+            >
+            <div class="info-text">Agrandissez les bulles et panneaux pour améliorer la lisibilité.</div>
+          </div>
+
+          <div class="setting-group">
+            <label class="setting-label">
               <span>Vitesse de lecture</span>
               <span class="setting-value">${this.playbackRate.toFixed(1)}x</span>
             </label>
@@ -678,6 +710,46 @@ export class SettingsPanel extends LitElement {
               aria-valuemax="2.0"
               aria-valuenow=${this.playbackRate}
             >
+          </div>
+
+          <div class="setting-group">
+            <label class="setting-label">Périphériques audio</label>
+            <div class="device-select">
+              <span style="font-size:0.85rem; color: var(--text-dim);">Microphone</span>
+              <select
+                @change=${(e: any) => this._dispatch('input-device-changed', e.target.value)}
+                aria-label="Sélectionner le microphone">
+                ${this.inputDevices.map(device => html`
+                  <option value=${device.deviceId} ?selected=${device.deviceId === this.selectedInputDeviceId}>
+                    ${device.label}
+                  </option>
+                `)}
+              </select>
+            </div>
+            <div class="device-select">
+              <span style="font-size:0.85rem; color: var(--text-dim);">Sortie audio</span>
+              <select
+                @change=${(e: any) => this._dispatch('output-device-changed', e.target.value)}
+                aria-label="Sélectionner le haut-parleur"
+                ?disabled=${!this.canSelectOutput}>
+                ${this.outputDevices.map(device => html`
+                  <option value=${device.deviceId} ?selected=${device.deviceId === this.selectedOutputDeviceId}>
+                    ${device.label}
+                  </option>
+                `)}
+              </select>
+              ${!this.canSelectOutput ? html`
+                <div class="info-text">La sélection de sortie est indisponible sur ce navigateur.</div>
+              ` : ''}
+            </div>
+            <button
+              class="btn-small primary"
+              style="margin-top: 16px;"
+              ?disabled=${this.isCalibratingInput}
+              @click=${() => this._dispatch('calibrate-input', null)}>
+              ${this.isCalibratingInput ? 'Calibrage en cours...' : 'Calibrer automatiquement le micro'}
+            </button>
+            <div class="info-text">Parlez pendant quelques secondes pour équilibrer automatiquement le niveau d’entrée.</div>
           </div>
 
           <div class="setting-group">

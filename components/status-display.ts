@@ -6,6 +6,8 @@ export class StatusDisplay extends LitElement {
   @property({type: String}) status = '';
   @property({type: String}) error = '';
   @property({type: Boolean}) isProcessing = false;
+  @property({type: String}) fallbackMessage = '';
+  @property({type: Number}) nextRetrySeconds = 0;
 
   // Internal state to handle toast animation
   @state() private _visibleError: string = '';
@@ -149,7 +151,29 @@ export class StatusDisplay extends LitElement {
       from { opacity: 0; transform: translateY(-20px) scale(0.9); }
       to { opacity: 1; transform: translateY(0) scale(1); }
     }
+    .fallback-banner {
+      background: rgba(255, 153, 0, 0.15);
+      border: 1px solid rgba(255, 187, 92, 0.4);
+      color: #ffd08a;
+      padding: 12px 18px;
+      border-radius: 14px;
+      font-size: 0.85rem;
+      display: flex;
+      flex-direction: column;
+      gap: 4px;
+      text-align: left;
+      width: 100%;
+      max-width: 420px;
+    }
   `;
+
+  private formatRetry() {
+    if (!this.nextRetrySeconds) return '';
+    if (this.nextRetrySeconds < 60) return `${Math.max(1, this.nextRetrySeconds)}s`;
+    const minutes = Math.floor(this.nextRetrySeconds / 60);
+    const seconds = this.nextRetrySeconds % 60;
+    return `${minutes}m ${seconds.toString().padStart(2, '0')}s`;
+  }
 
   render() {
       return html`
@@ -165,6 +189,13 @@ export class StatusDisplay extends LitElement {
         <!-- Regular Status -->
         <div class="status-badge" role="status" aria-live="polite">${this.status}</div>
       `}
+
+      ${this.fallbackMessage ? html`
+        <div class="fallback-banner" role="alert">
+          <strong>${this.fallbackMessage}</strong>
+          ${this.nextRetrySeconds ? html`<span>Nouvelle tentative dans ${this.formatRetry()}.</span>` : ''}
+        </div>
+      ` : ''}
 
       <!-- Error Toast -->
       ${this._visibleError ? html`
