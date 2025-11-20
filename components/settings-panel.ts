@@ -9,7 +9,7 @@ type DeviceOption = { deviceId: string; label: string };
 
 @customElement('settings-panel')
 export class SettingsPanel extends LitElement {
-  @property({type: Boolean}) show = false;
+  @property({type: Boolean, reflect: true}) show = false;
   @property({type: String}) selectedVoice = 'Orus';
   @property({type: String}) selectedStyle = 'Naturel';
   @property({type: Number}) playbackRate = 1.0;
@@ -39,29 +39,39 @@ export class SettingsPanel extends LitElement {
 
   static styles = css`
     :host {
-      font-family: 'Exo 2', 'Google Sans', sans-serif;
-      --glass-bg: rgba(10, 15, 25, 0.9);
-      --glass-border: rgba(0, 240, 255, 0.2);
-      --primary-color: #00f0ff;
-      --primary-hover: #60f7ff;
-      --danger-color: #ff2a6d;
-      --text-main: #e0f7fa;
-      --text-dim: #81d4fa;
-      --input-bg: rgba(0, 0, 0, 0.3);
+      font-family: system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif;
+      --bg-panel: #18181b;
+      --bg-input: #27272a;
+      --border-color: #3f3f46;
+      --primary-color: #3b82f6; /* Professional Blue */
+      --primary-hover: #2563eb;
+      --danger-color: #ef4444;
+      --text-main: #f4f4f5;
+      --text-dim: #a1a1aa;
+      z-index: 100;
+    }
+
+    :host(:not([show])) {
+      display: none;
+    }
+
+    :host([show]) {
+      position: fixed;
+      inset: 0;
+      display: block;
+      width: 100%;
+      height: 100%;
+      pointer-events: auto;
     }
 
     .settings-overlay {
-      position: fixed;
-      top: 0;
-      left: 0;
-      right: 0;
-      bottom: 0;
-      background: rgba(0, 0, 0, 0.85);
-      z-index: 100;
+      position: absolute;
+      inset: 0;
+      background: rgba(0, 0, 0, 0.6);
       display: flex;
       align-items: center;
       justify-content: center;
-      backdrop-filter: blur(20px) saturate(180%);
+      backdrop-filter: blur(4px);
       opacity: 0;
       animation: fadeIn 0.2s ease-out forwards;
     }
@@ -71,205 +81,133 @@ export class SettingsPanel extends LitElement {
     }
 
     .settings-panel {
-      background: linear-gradient(135deg, rgba(5, 10, 20, 0.85), rgba(10, 15, 25, 0.75));
-      border: 1px solid rgba(0, 255, 255, 0.25);
-      border-radius: 20px;
-      padding: 28px;
-      width: 850px;
-      max-width: 94vw;
-      max-height: 88vh;
+      background: var(--bg-panel);
+      border: 1px solid var(--border-color);
+      border-radius: 12px;
+      padding: 24px;
+      width: 800px;
+      max-width: 90vw;
+      max-height: 85vh;
       overflow-y: auto;
       color: var(--text-main);
       box-shadow: 
-        0 0 60px rgba(0, 255, 255, 0.15),
-        0 0 100px rgba(255, 0, 255, 0.08),
-        0 20px 50px rgba(0, 0, 0, 0.6),
-        inset 0 1px 0 rgba(255, 255, 255, 0.1);
-      backdrop-filter: blur(30px) saturate(180%);
-      transform: scale(0.92) translateY(15px);
+        0 20px 25px -5px rgba(0, 0, 0, 0.1), 
+        0 10px 10px -5px rgba(0, 0, 0, 0.04);
+      transform: scale(0.95);
       opacity: 0;
-      animation: slideUp 0.3s cubic-bezier(0.34, 1.56, 0.64, 1) forwards;
-      animation-delay: 0.05s;
+      animation: slideUp 0.2s ease-out forwards;
     }
 
     @keyframes slideUp {
-      to { transform: scale(1) translateY(0); opacity: 1; }
+      to { transform: scale(1); opacity: 1; }
     }
 
+    /* Scrollbar */
     .settings-panel::-webkit-scrollbar {
-      width: 4px;
+      width: 6px;
     }
     .settings-panel::-webkit-scrollbar-track {
-      background: rgba(0, 0, 0, 0.2);
-      border-radius: 2px;
+      background: transparent;
     }
     .settings-panel::-webkit-scrollbar-thumb {
-      background: linear-gradient(180deg, rgba(0, 255, 255, 0.3), rgba(255, 0, 255, 0.3));
-      border-radius: 2px;
-      box-shadow: 0 0 6px rgba(0, 255, 255, 0.4);
+      background: var(--border-color);
+      border-radius: 3px;
     }
     .settings-panel::-webkit-scrollbar-thumb:hover {
-      background: linear-gradient(180deg, rgba(0, 255, 255, 0.5), rgba(255, 0, 255, 0.5));
-      box-shadow: 0 0 10px rgba(0, 255, 255, 0.6);
+      background: #52525b;
     }
 
     .settings-header {
       display: flex;
       justify-content: space-between;
       align-items: center;
-      margin-bottom: 28px;
-      border-bottom: 1px solid rgba(0, 255, 255, 0.2);
-      padding-bottom: 14px;
+      margin-bottom: 24px;
+      border-bottom: 1px solid var(--border-color);
+      padding-bottom: 16px;
     }
     
     .settings-header h2 {
       margin: 0;
-      font-family: 'Orbitron', sans-serif;
-      font-size: 1.6rem;
-      font-weight: 700;
-      letter-spacing: 3px;
-      text-transform: uppercase;
-      color: #00ffff;
-      text-shadow: 
-        0 0 15px rgba(0, 255, 255, 0.6),
-        0 0 30px rgba(0, 255, 255, 0.3);
-      background: linear-gradient(90deg, #00ffff, #00ccff, #00ffff);
-      -webkit-background-clip: text;
-      -webkit-text-fill-color: transparent;
-      background-clip: text;
+      font-size: 1.25rem;
+      font-weight: 600;
+      color: var(--text-main);
+      letter-spacing: -0.025em;
     }
 
     .settings-header button {
-      background: linear-gradient(135deg, rgba(255, 255, 255, 0.05), rgba(0, 0, 0, 0.1));
-      border: 1px solid rgba(0, 255, 255, 0.2);
+      background: transparent;
+      border: 1px solid var(--border-color);
       color: var(--text-dim);
       cursor: pointer;
       padding: 8px;
-      border-radius: 50%;
-      transition: all 0.3s cubic-bezier(0.34, 1.56, 0.64, 1);
+      border-radius: 8px;
       display: flex;
-      box-shadow: 0 2px 10px rgba(0, 0, 0, 0.3);
+      transition: all 0.2s;
     }
     
     .settings-header button:hover {
-      background: linear-gradient(135deg, rgba(0, 255, 255, 0.15), rgba(0, 200, 255, 0.1));
-      color: #00ffff;
-      border-color: #00ffff;
-      transform: rotate(90deg) scale(1.1);
-      box-shadow: 
-        0 0 20px rgba(0, 255, 255, 0.4),
-        0 4px 15px rgba(0, 0, 0, 0.4);
+      background: var(--bg-input);
+      color: var(--text-main);
     }
 
     .setting-group {
-      margin-bottom: 20px;
-      background: linear-gradient(135deg, rgba(0, 0, 0, 0.3), rgba(0, 0, 0, 0.2));
-      padding: 18px;
-      border-radius: 14px;
-      border: 1px solid rgba(0, 255, 255, 0.08);
-      transition: all 0.3s ease;
-      position: relative;
-    }
-
-    .setting-group::before {
-      content: '';
-      position: absolute;
-      inset: 0;
-      border-radius: inherit;
-      padding: 1px;
-      background: linear-gradient(135deg, rgba(0, 255, 255, 0.2), transparent);
-      -webkit-mask: linear-gradient(#fff 0 0) content-box, linear-gradient(#fff 0 0);
-      -webkit-mask-composite: xor;
-      mask-composite: exclude;
-      opacity: 0;
-      transition: opacity 0.3s;
-    }
-
-    .setting-group:hover {
-      border-color: rgba(0, 255, 255, 0.2);
-      background: linear-gradient(135deg, rgba(0, 0, 0, 0.35), rgba(0, 0, 0, 0.25));
-    }
-
-    .setting-group:hover::before {
-      opacity: 1;
+      margin-bottom: 24px;
     }
 
     .setting-label {
-      margin-bottom: 10px;
-      font-size: 0.8rem;
-      color: rgba(160, 215, 255, 0.9);
       display: flex;
       justify-content: space-between;
       align-items: center;
-      text-transform: uppercase;
-      letter-spacing: 2px;
-      font-weight: 600;
+      margin-bottom: 8px;
+      font-size: 0.875rem;
+      font-weight: 500;
+      color: var(--text-main);
     }
 
     .setting-value {
-      color: #00ffff;
-      font-family: 'Orbitron', monospace;
-      font-size: 0.8rem;
-      background: linear-gradient(135deg, rgba(0, 255, 255, 0.12), rgba(0, 200, 255, 0.08));
-      padding: 3px 10px;
-      border-radius: 6px;
-      border: 1px solid rgba(0, 255, 255, 0.25);
-      box-shadow: 
-        0 0 10px rgba(0, 255, 255, 0.1),
-        inset 0 1px 0 rgba(255, 255, 255, 0.1);
-      text-shadow: 0 0 8px rgba(0, 255, 255, 0.5);
+      font-family: monospace;
+      font-size: 0.75rem;
+      background: var(--bg-input);
+      padding: 2px 6px;
+      border-radius: 4px;
+      color: var(--text-dim);
+      border: 1px solid var(--border-color);
     }
 
     .device-select {
       margin-top: 12px;
       display: flex;
       flex-direction: column;
-      gap: 8px;
+      gap: 6px;
     }
 
-    select, input[type="text"] {
+    select, input[type="text"], textarea {
       width: 100%;
-      background: linear-gradient(135deg, rgba(0, 0, 0, 0.4), rgba(0, 0, 0, 0.3));
-      border: 1px solid rgba(0, 255, 255, 0.2);
+      background: var(--bg-input);
+      border: 1px solid var(--border-color);
       color: var(--text-main);
-      padding: 12px 14px;
-      border-radius: 10px;
-      font-size: 0.95rem;
-      font-family: 'Exo 2', sans-serif;
+      padding: 10px 12px;
+      border-radius: 6px;
+      font-size: 0.9rem;
+      font-family: inherit;
       outline: none;
-      transition: all 0.3s ease;
-      box-shadow: inset 0 2px 4px rgba(0, 0, 0, 0.3);
+      transition: border-color 0.2s;
     }
 
-    select {
-      cursor: pointer;
-      appearance: none;
-      background-image: url("data:image/svg+xml;charset=US-ASCII,%3Csvg%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%20width%3D%22292.4%22%20height%3D%22292.4%22%3E%3Cpath%20fill%3D%22%2300ffff%22%20d%3D%22M287%2069.4a17.6%2017.6%200%200%200-13-5.4H18.4c-5%200-9.3%201.8-12.9%205.4A17.6%2017.6%200%200%200%200%2082.2c0%205%201.8%209.3%205.4%2012.9l128%20127.9c3.6%203.6%207.8%205.4%2012.8%205.4s9.2-1.8%2012.8-5.4L287%2095c3.5-3.5%205.4-7.8%205.4-12.8%200-5-1.9-9.2-5.5-12.8z%22%2F%3E%3C%2Fsvg%3E");
-      background-repeat: no-repeat;
-      background-position: right 14px top 50%;
-      background-size: 9px auto;
-      padding-right: 40px;
-    }
-    
-    select:hover, select:focus, input[type="text"]:focus {
-      border-color: rgba(0, 255, 255, 0.5);
-      background: linear-gradient(135deg, rgba(0, 255, 255, 0.08), rgba(0, 200, 255, 0.05));
-      box-shadow: 
-        0 0 20px rgba(0, 255, 255, 0.15),
-        inset 0 2px 4px rgba(0, 0, 0, 0.3);
+    select:focus, input[type="text"]:focus, textarea:focus {
+      border-color: var(--primary-color);
     }
     
     select option {
-      background: #0a0f19;
+      background: var(--bg-panel);
       color: var(--text-main);
-      padding: 10px;
     }
 
     input[type=range] {
       width: 100%;
       -webkit-appearance: none; 
       background: transparent; 
-      margin: 10px 0;
+      margin: 12px 0;
     }
 
     input[type=range]::-webkit-slider-thumb {
@@ -277,159 +215,77 @@ export class SettingsPanel extends LitElement {
       height: 16px;
       width: 16px;
       border-radius: 50%;
-      background: linear-gradient(135deg, #00ffff, #00ccff);
-      border: 2px solid rgba(0, 255, 255, 0.5);
+      background: var(--primary-color);
       cursor: pointer;
       margin-top: -6px; 
-      box-shadow: 
-        0 0 12px rgba(0, 255, 255, 0.8),
-        0 2px 8px rgba(0, 0, 0, 0.4),
-        inset 0 1px 0 rgba(255, 255, 255, 0.3);
-      transition: all 0.2s cubic-bezier(0.34, 1.56, 0.64, 1);
-    }
-
-    input[type=range]::-webkit-slider-thumb:hover {
-      transform: scale(1.15);
-      background: linear-gradient(135deg, #00ffff, #00eeff);
-      border-color: #00ffff;
-      box-shadow: 
-        0 0 20px rgba(0, 255, 255, 1),
-        0 0 30px rgba(0, 255, 255, 0.5);
-    }
-
-    input[type=range]::-webkit-slider-thumb:active {
-      transform: scale(1.05);
+      box-shadow: 0 2px 4px rgba(0,0,0,0.2);
     }
 
     input[type=range]::-webkit-slider-runnable-track {
       width: 100%;
       height: 4px;
       cursor: pointer;
-      background: linear-gradient(90deg, rgba(0, 255, 255, 0.2), rgba(255, 0, 255, 0.2));
+      background: var(--border-color);
       border-radius: 2px;
-      box-shadow: inset 0 1px 2px rgba(0, 0, 0, 0.3);
     }
 
     .info-text {
-      font-size: 0.75rem;
-      color: rgba(160, 215, 255, 0.7);
+      font-size: 0.8rem;
+      color: var(--text-dim);
       margin-top: 6px;
-      line-height: 1.4;
-    }
-
-    textarea {
-      width: 100%;
-      background: linear-gradient(135deg, rgba(0, 0, 0, 0.4), rgba(0, 0, 0, 0.3));
-      border: 1px solid rgba(0, 255, 255, 0.2);
-      border-radius: 10px;
-      color: var(--text-main);
-      padding: 12px;
-      font-family: 'Exo 2', monospace;
-      font-size: 0.85rem;
-      resize: none;
-      transition: all 0.3s ease;
-      line-height: 1.5;
-      box-shadow: inset 0 2px 4px rgba(0, 0, 0, 0.3);
     }
     
     textarea.memory-display {
-      height: 110px;
-      opacity: 0.9;
+      height: 120px;
+      font-family: monospace;
+      font-size: 0.85rem;
     }
 
     textarea.prompt-input {
-      height: 90px;
+      height: 80px;
       margin-top: 8px;
-      font-family: 'Exo 2', sans-serif;
     }
     
-    textarea:focus {
-      outline: none;
-      border-color: rgba(0, 255, 255, 0.5);
-      background: linear-gradient(135deg, rgba(0, 255, 255, 0.08), rgba(0, 200, 255, 0.05));
-      box-shadow: 
-        0 0 20px rgba(0, 255, 255, 0.15),
-        inset 0 2px 4px rgba(0, 0, 0, 0.3);
-    }
-
     .btn-small {
-      background: linear-gradient(135deg, rgba(0, 255, 255, 0.08), rgba(0, 200, 255, 0.05));
-      border: 1px solid rgba(0, 255, 255, 0.25);
+      background: var(--bg-input);
+      border: 1px solid var(--border-color);
       color: var(--text-main);
-      padding: 10px 18px;
-      border-radius: 10px;
+      padding: 8px 16px;
+      border-radius: 6px;
       cursor: pointer;
-      font-size: 0.85rem;
-      font-weight: 600;
-      margin-top: 10px;
+      font-size: 0.875rem;
+      font-weight: 500;
+      margin-top: 8px;
       width: 100%;
-      transition: all 0.3s cubic-bezier(0.34, 1.56, 0.64, 1);
+      transition: all 0.2s;
       display: inline-flex;
       align-items: center;
       justify-content: center;
       gap: 8px;
-      text-transform: uppercase;
-      letter-spacing: 1.5px;
-      box-shadow: 
-        0 2px 10px rgba(0, 0, 0, 0.3),
-        inset 0 1px 0 rgba(255, 255, 255, 0.1);
-      position: relative;
-      overflow: hidden;
-    }
-    
-    .btn-small::before {
-      content: '';
-      position: absolute;
-      inset: 0;
-      background: linear-gradient(135deg, rgba(255, 255, 255, 0.1), transparent);
-      opacity: 0;
-      transition: opacity 0.3s;
     }
 
     .btn-small:hover {
-      background: linear-gradient(135deg, rgba(0, 255, 255, 0.12), rgba(0, 200, 255, 0.08));
-      border-color: rgba(0, 255, 255, 0.4);
-      transform: translateY(-2px);
-      box-shadow: 
-        0 4px 20px rgba(0, 0, 0, 0.4),
-        0 0 20px rgba(0, 255, 255, 0.2);
-    }
-
-    .btn-small:hover::before {
-      opacity: 1;
+      background: #3f3f46;
     }
 
     .btn-small.primary {
-      background: linear-gradient(135deg, rgba(0, 255, 255, 0.2), rgba(0, 200, 255, 0.15));
-      color: #00ffff;
-      border: 1px solid rgba(0, 255, 255, 0.5);
-      box-shadow: 
-        0 0 20px rgba(0, 255, 255, 0.2),
-        0 2px 10px rgba(0, 0, 0, 0.3);
-      text-shadow: 0 0 10px rgba(0, 255, 255, 0.5);
+      background: var(--primary-color);
+      border-color: var(--primary-color);
+      color: white;
     }
 
     .btn-small.primary:hover {
-      background: linear-gradient(135deg, rgba(0, 255, 255, 0.3), rgba(0, 200, 255, 0.2));
-      transform: translateY(-2px);
-      box-shadow: 
-        0 0 35px rgba(0, 255, 255, 0.4),
-        0 4px 20px rgba(0, 0, 0, 0.4);
+      background: var(--primary-hover);
     }
     
     .btn-small.danger {
-      color: #ff3388;
-      border-color: rgba(255, 0, 100, 0.4);
-      background: linear-gradient(135deg, rgba(255, 0, 100, 0.12), rgba(200, 0, 80, 0.08));
-      text-shadow: 0 0 8px rgba(255, 0, 100, 0.4);
+      color: var(--danger-color);
+      border-color: rgba(239, 68, 68, 0.3);
     }
     
     .btn-small.danger:hover {
-      background: linear-gradient(135deg, rgba(255, 0, 100, 0.2), rgba(200, 0, 80, 0.15));
-      border-color: rgba(255, 0, 100, 0.6);
-      box-shadow: 
-        0 0 25px rgba(255, 0, 100, 0.3),
-        0 4px 20px rgba(0, 0, 0, 0.4);
+      background: rgba(239, 68, 68, 0.1);
+      border-color: var(--danger-color);
     }
 
     .btn-icon {
@@ -437,14 +293,14 @@ export class SettingsPanel extends LitElement {
       border: none;
       cursor: pointer;
       font-size: 1.1rem;
-      padding: 6px;
-      border-radius: 8px;
+      padding: 4px;
+      border-radius: 4px;
       color: var(--text-dim);
-      transition: all 0.2s;
+      transition: color 0.2s;
     }
     .btn-icon:hover { 
-        background: rgba(255, 42, 109, 0.1);
         color: var(--danger-color);
+        background: rgba(239, 68, 68, 0.1);
     }
     
     .btn-icon-small {
@@ -452,105 +308,89 @@ export class SettingsPanel extends LitElement {
       border: none;
       cursor: pointer;
       color: var(--text-dim);
-      font-size: 1.2rem;
+      font-size: 1.1rem;
       padding: 2px 6px;
       border-radius: 4px;
-      transition: all 0.2s;
-      line-height: 1;
     }
     
     .btn-icon-small:hover {
-      background: rgba(255, 42, 109, 0.1);
       color: var(--danger-color);
+      background: rgba(239, 68, 68, 0.1);
     }
     
     .memory-categories {
       display: flex;
       flex-direction: column;
-      gap: 16px;
+      gap: 12px;
       margin-bottom: 16px;
       max-height: 300px;
       overflow-y: auto;
-      padding-right: 4px;
-    }
-    
-    .memory-categories::-webkit-scrollbar {
-      width: 4px;
-    }
-    
-    .memory-categories::-webkit-scrollbar-thumb {
-      background: rgba(0, 240, 255, 0.2);
-      border-radius: 2px;
+      background: var(--bg-input);
+      border-radius: 8px;
+      padding: 8px;
+      border: 1px solid var(--border-color);
     }
     
     .memory-category {
-      background: rgba(0, 0, 0, 0.3);
-      border-radius: 12px;
-      padding: 12px;
-      border: 1px solid rgba(255, 255, 255, 0.05);
+      margin-bottom: 8px;
     }
     
     .category-header {
       display: flex;
       justify-content: space-between;
       align-items: center;
-      margin-bottom: 12px;
-      padding-bottom: 8px;
-      border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+      margin-bottom: 8px;
+      padding: 4px 8px;
     }
     
     .category-title {
       font-weight: 600;
-      font-size: 0.8rem;
-      color: var(--primary-color);
+      font-size: 0.75rem;
+      color: var(--text-dim);
       text-transform: uppercase;
-      letter-spacing: 1px;
+      letter-spacing: 0.05em;
     }
     
     .category-count {
-      background: rgba(0, 240, 255, 0.1);
-      color: var(--primary-color);
-      padding: 2px 8px;
-      border-radius: 10px;
+      background: rgba(255,255,255,0.1);
+      color: var(--text-main);
+      padding: 1px 6px;
+      border-radius: 4px;
       font-size: 0.7rem;
-      font-weight: 600;
-      border: 1px solid rgba(0, 240, 255, 0.2);
     }
     
     .memory-items {
       display: flex;
       flex-direction: column;
-      gap: 8px;
+      gap: 4px;
     }
     
     .memory-item {
       display: flex;
       justify-content: space-between;
       align-items: center;
-      padding: 10px 12px;
-      background: rgba(255, 255, 255, 0.02);
-      border-radius: 8px;
+      padding: 8px 12px;
+      background: var(--bg-panel);
+      border-radius: 6px;
       font-size: 0.85rem;
-      line-height: 1.4;
-      transition: background 0.2s;
       border: 1px solid transparent;
     }
     
     .memory-item:hover {
-      background: rgba(255, 255, 255, 0.05);
-      border-color: rgba(255, 255, 255, 0.1);
+      border-color: var(--border-color);
     }
     
     .memory-item span {
       flex: 1;
       color: var(--text-main);
+      margin-right: 8px;
     }
     
     .memory-empty {
       text-align: center;
       padding: 24px;
       color: var(--text-dim);
-      font-size: 0.9rem;
+      font-size: 0.875rem;
       font-style: italic;
     }
     
@@ -572,34 +412,26 @@ export class SettingsPanel extends LitElement {
     }
     
     .creation-form {
-      margin-top: 20px;
-      padding-top: 20px;
-      border-top: 1px solid var(--glass-border);
-      animation: fadeIn 0.3s ease;
+      margin-top: 16px;
+      padding-top: 16px;
+      border-top: 1px solid var(--border-color);
+      animation: fadeIn 0.2s ease;
     }
     
     .creation-form input {
-      margin-bottom: 12px;
+      margin-bottom: 8px;
     }
 
     /* Mobile Adaptations */
     @media (max-width: 768px) {
       .settings-panel {
-        padding: 20px;
+        padding: 16px;
         width: 100%;
         max-width: 100%;
         height: 100%;
         max-height: 100%;
         border-radius: 0;
         border: none;
-      }
-      
-      .settings-header h2 {
-        font-size: 1.4rem;
-      }
-      
-      .btn-small {
-        padding: 14px;
       }
       
       .memory-actions {

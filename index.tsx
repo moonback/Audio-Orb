@@ -56,9 +56,6 @@ export class GdmLiveAudio extends LitElement {
   @state() trebleGain = 0; // -20 to +20 dB
   @state() audioPreset = 'Personnalisé';
   
-  // Zen Mode State
-  @state() isFocusMode = false;
-  
   // Personality State
   @state() personalities: Personality[] = [];
   @state() selectedPersonalityId = 'assistant';
@@ -89,7 +86,7 @@ export class GdmLiveAudio extends LitElement {
   private readonly onboardingSteps = [
     { title: 'Bienvenue dans NeuroChat', description: 'Activez le micro (Espace) et regardez l’orbite réagir à votre voix.' },
     { title: 'Panneaux intelligents', description: 'Utilisez S pour ouvrir les réglages, ajuster la voix, la mémoire ou les périphériques.' },
-    { title: 'Aide & Focus', description: 'Double-cliquez pour le mode Zen, H pour l’aide, D pour exporter vos transcripts.' }
+    { title: 'Aide & Export', description: 'Appuyez sur H pour l’aide, D pour exporter vos conversations.' }
   ];
   private readonly helpSections = [
     {
@@ -193,16 +190,6 @@ export class GdmLiveAudio extends LitElement {
       flex-direction: column;
       justify-content: space-between;
       transition: opacity 0.5s ease;
-    }
-
-    /* Focus Mode Hiding */
-    .ui-layer.focus-mode > .top-bar,
-    .ui-layer.focus-mode > .chat-container,
-    .ui-layer.focus-mode > control-panel,
-    .ui-layer.focus-mode > settings-panel,
-    .ui-layer.focus-mode > status-display {
-      opacity: 0;
-      pointer-events: none;
     }
 
     /* Allow interaction with UI elements normally */
@@ -384,45 +371,8 @@ export class GdmLiveAudio extends LitElement {
       }
     }
 
-    /* Hint for Zen Mode - Enhanced */
-    .zen-hint {
-      position: absolute;
-      bottom: 100px;
-      left: 50%;
-      transform: translateX(-50%);
-      color: rgba(0, 255, 255, 0.5);
-      font-size: 0.75rem;
-      opacity: 0;
-      transition: opacity 1s ease;
-      pointer-events: none;
-      text-transform: uppercase;
-      letter-spacing: 3px;
-      font-family: 'Orbitron', sans-serif;
-      text-shadow: 
-        0 0 10px rgba(0, 255, 255, 0.6),
-        0 0 20px rgba(0, 255, 255, 0.3);
-      animation: pulse-text 3s ease-in-out infinite;
-    }
+    /* Hint for Zen Mode - Removed */
     
-    .ui-layer.focus-mode .zen-hint {
-      opacity: 1;
-    }
-
-    @keyframes pulse-text {
-      0%, 100% { 
-        opacity: 0.5;
-        text-shadow: 
-          0 0 10px rgba(0, 255, 255, 0.6),
-          0 0 20px rgba(0, 255, 255, 0.3);
-      }
-      50% { 
-        opacity: 0.8;
-        text-shadow: 
-          0 0 15px rgba(0, 255, 255, 0.8),
-          0 0 30px rgba(0, 255, 255, 0.5);
-      }
-    }
-
     /* Custom Scrollbar - Futuristic */
     .chat-container::-webkit-scrollbar { 
       width: 4px; 
@@ -460,10 +410,6 @@ export class GdmLiveAudio extends LitElement {
       }
       
       /* Désactiver le mode zen sur mobile */
-      .zen-hint {
-        display: none !important;
-      }
-
       .visual-layer {
         pointer-events: none !important;
       }
@@ -1288,30 +1234,19 @@ export class GdmLiveAudio extends LitElement {
     }
   }
 
-  private _toggleFocusMode() {
-    // Désactiver le mode zen sur mobile (écrans < 768px)
-    if (window.innerWidth < 768) {
-      return;
-    }
-    this.isFocusMode = !this.isFocusMode;
-  }
-
   render() {
     return html`
       <!-- 3D Background -->
-      <div class="visual-layer" @dblclick=${this._toggleFocusMode}>
+      <div class="visual-layer">
          <gdm-live-audio-visuals-3d
             .inputNode=${this.inputNode}
             .outputNode=${this.outputNode}
-            .lowPowerMode=${!this.isFocusMode}
+            .lowPowerMode=${false}
          ></gdm-live-audio-visuals-3d>
       </div>
       
       <!-- UI Overlay -->
-      <div class="ui-layer ${this.isFocusMode ? 'focus-mode' : ''}"
-        @dblclick=${this._toggleFocusMode}>
-        
-        <div class="zen-hint">Double-cliquez pour quitter le mode Zen</div>
+      <div class="ui-layer">
         
         <div class="app-header">
           <div class="header-left">
