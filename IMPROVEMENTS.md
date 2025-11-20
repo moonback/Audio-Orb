@@ -1,4 +1,4 @@
-# 🚀 Améliorations Apportées à Audio Orb
+# 🚀 Améliorations Apportées à NeuroChat
 
 Ce document liste les améliorations de performance, qualité de code et expérience utilisateur apportées à l'application.
 

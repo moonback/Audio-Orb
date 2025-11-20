@@ -6,7 +6,7 @@ Cette application fonctionne **sans base de données backend traditionnelle**. T
 
 ## 🔑 Clés de Stockage
 
-Voici la liste exhaustive des clés utilisées par Audio Orb :
+Voici la liste exhaustive des clés utilisées par NeuroChat :
 
 | Clé | Type | Exemple de valeur | Description |
 |-----|------|-------------------|-------------|

@@ -1,4 +1,4 @@
-# 🚀 Optimisations de Performance - Audio Orb
+# 🚀 Optimisations de Performance - NeuroChat
 
 Ce document décrit les optimisations de performance implémentées pour améliorer les performances audio et 3D de l'application.
 

@@ -445,10 +445,31 @@ CODE DE CONDUITE POUR ASSISTANT :
     const currentPersonality = this.personalityManager.getById(this.selectedPersonalityId) || this.personalityManager.getAll()[0];
     let systemInstruction = `${currentPersonality.prompt} Veuillez parler avec un ton, un accent ou un style ${this.selectedStyle}.`;
 
-    // Inject Memory (structured)
-    const memoryText = this.memoryManager.toText();
+    // Inject Memory (Semantic Search Phase 2.2)
+    // On récupère toute la mémoire localement
+    let memoryText = this.memoryManager.toText();
+    
+    // Si la mémoire est conséquente, on effectue une recherche sémantique pour ne garder que le pertinent
+    // et économiser des tokens pour la session Live
+    if (this.client && memoryText.length > 100) {
+       try {
+         const lastContext = debouncedStorage.getItem('gdm-last-context') || '';
+         if (memoryText.length > 2000) {
+            this.updateStatus('Optimisation mémoire...');
+         }
+         
+         // Use semantic search to filter memory
+         const relevantMemory = await this.memoryManager.retrieveRelevantMemory(this.client, lastContext);
+         if (relevantMemory) {
+            memoryText = relevantMemory;
+         }
+       } catch (e) {
+         console.warn('Semantic memory search failed, using full memory', e);
+       }
+    }
+
     if (memoryText && memoryText.trim().length > 0) {
-      systemInstruction += `\n\nINFORMATIONS SUR L'UTILISATEUR (MÉMOIRE STRUCTURÉE) :\n${memoryText}\n\nUtilisez ces informations pour personnaliser la conversation, mais ne les répétez pas explicitement sauf si on vous le demande.`;
+      systemInstruction += `\n\nINFORMATIONS SUR L'UTILISATEUR (EXTRAITS PERTINENTS) :\n${memoryText}\n\nUtilisez ces informations pour personnaliser la conversation, mais ne les répétez pas explicitement sauf si on vous le demande.`;
     }
 
     const config: any = {
@@ -686,6 +707,11 @@ CODE DE CONDUITE POUR ASSISTANT :
     this.updateStatus('Mémorisation...');
     try {
       const transcriptText = this.currentSessionTranscript.join('\n');
+      
+      // Save last context (last 5 exchanges) for next session
+      const contextLines = this.currentSessionTranscript.slice(-10); 
+      debouncedStorage.setItem('gdm-last-context', contextLines.join('\n'));
+
       await this.memoryManager.updateFromTranscript(transcriptText, this.client);
       
       // Update state

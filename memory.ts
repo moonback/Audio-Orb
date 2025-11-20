@@ -183,6 +183,62 @@ export class MemoryManager {
   }
 
   /**
+   * Récupère les éléments de mémoire les plus pertinents pour le contexte actuel
+   */
+  async retrieveRelevantMemory(client: any, context: string): Promise<string> {
+    const allMemory = this.toText();
+    
+    if (!allMemory || allMemory.trim().length === 0) {
+      return '';
+    }
+
+    // Si la mémoire est petite, pas besoin de filtrer
+    if (allMemory.length < 2000) {
+      return allMemory;
+    }
+
+    const prompt = `
+Tu es un gestionnaire de mémoire pour une IA.
+Ton but est de sélectionner les informations les plus pertinentes de la mémoire à long terme pour la prochaine conversation, afin d'économiser des tokens.
+
+MÉMOIRE TOTALE :
+${allMemory}
+
+CONTEXTE RÉCENT (Derniers échanges) :
+${context || "Nouvelle session, aucun contexte immédiat."}
+
+TÂCHE :
+1. Analyse le contexte récent et la mémoire totale.
+2. Extrais les 5 à 10 faits, préférences ou éléments de contexte les plus pertinents pour continuer la conversation ou commencer une nouvelle session.
+3. Si le contexte est vide, privilégie les faits généraux sur l'utilisateur et ses préférences principales.
+4. Formate la sortie comme une liste simple de points.
+
+Réponds UNIQUEMENT avec la liste des points pertinents.
+`;
+
+    try {
+      // Créer une promesse de timeout
+      const timeoutPromise = new Promise<string>((_, reject) => 
+        setTimeout(() => reject(new Error("Timeout recherche sémantique")), 4000)
+      );
+
+      const apiCallPromise = client.models.generateContent({
+        model: 'gemini-2.5-flash',
+        contents: prompt,
+      });
+
+      // Course entre l'appel API et le timeout
+      const response: any = await Promise.race([apiCallPromise, timeoutPromise]);
+      
+      return response.text.trim();
+    } catch (e) {
+      console.warn('Recherche sémantique mémoire ignorée (erreur ou timeout):', e);
+      // Fallback: renvoyer toute la mémoire si elle n'est pas trop énorme, sinon tronquer
+      return allMemory.length > 5000 ? allMemory.substring(0, 5000) + "..." : allMemory; 
+    }
+  }
+
+  /**
    * Catégorise automatiquement du texte en utilisant l'IA
    */
   async categorizeWithAI(text: string, client: any): Promise<{category: MemoryCategory, items: string[]}> {

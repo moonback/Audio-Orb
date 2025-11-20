@@ -1,8 +1,8 @@
-# 🎵 Audio Orb
+# 🎵 NeuroChat
 
 > **Une interface vocale intelligente et immersive alimentée par Google Gemini Multimodal Live API.**
 
-Audio Orb est une application web expérimentale qui combine une conversation vocale naturelle en temps réel avec une visualisation 3D audio-réactive de haute qualité. Elle agit comme un assistant personnel doté d'une mémoire à long terme persistante et de personnalités configurables.
+NeuroChat est une application web expérimentale qui combine une conversation vocale naturelle en temps réel avec une visualisation 3D audio-réactive de haute qualité. Elle agit comme un assistant personnel doté d'une mémoire à long terme persistante et de personnalités configurables.
 
 ![License](https://img.shields.io/badge/license-Apache_2.0-blue.svg)
 ![Stack](https://img.shields.io/badge/tech-Lit_•_Three.js_•_Vite-orange.svg)

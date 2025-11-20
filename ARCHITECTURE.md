@@ -1,6 +1,6 @@
-# 🏗️ Architecture Technique - Audio Orb
+# 🏗️ Architecture Technique - NeuroChat
 
-Ce document décrit l'architecture de haut niveau de l'application Audio Orb. L'application est conçue comme une **SPA (Single Page Application)** purement client-side, qui interagit directement avec l'API Google Gemini via WebSocket.
+Ce document décrit l'architecture de haut niveau de l'application NeuroChat. L'application est conçue comme une **SPA (Single Page Application)** purement client-side, qui interagit directement avec l'API Google Gemini via WebSocket.
 
 ## 📐 Schéma Global
 

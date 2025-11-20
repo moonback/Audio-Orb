@@ -1,6 +1,6 @@
-# 🗺️ Roadmap - Audio Orb
+# 🗺️ Roadmap - NeuroChat
 
-Ce document présente le plan de développement futur d'Audio Orb, depuis le MVP actuel jusqu'aux fonctionnalités avancées.
+Ce document présente le plan de développement futur d'NeuroChat, depuis le MVP actuel jusqu'aux fonctionnalités avancées.
 
 ## 📊 État Actuel : MVP ✅
 

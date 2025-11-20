@@ -67,7 +67,8 @@ export class SettingsPanel extends LitElement {
       border: 1px solid var(--glass-border);
       border-radius: 28px;
       padding: 32px;
-      width: 400px;
+      width: 1000px;
+      max-width: 90vw;
       max-height: 85vh;
       overflow-y: auto;
       color: var(--text-main);
@@ -762,7 +763,7 @@ export class SettingsPanel extends LitElement {
           </div>
           
           <div style="text-align: center; margin-top: 40px; color: var(--text-dim); font-size: 0.8rem;">
-            Audio Orb - v2.0
+            NeuroChat - v2.0
           </div>
         </div>
       </div>
