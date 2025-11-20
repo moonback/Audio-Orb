@@ -45,69 +45,121 @@ export class StatusDisplay extends LitElement {
       gap: 16px;
     }
 
-    /* Status Badge (Ready, Listening...) */
+    /* Status Badge - Ultra Futuristic */
     .status-badge {
-      background: rgba(0, 0, 0, 0.4);
-      backdrop-filter: blur(8px);
-      border: 1px solid rgba(0, 240, 255, 0.2);
-      padding: 8px 20px;
-      border-radius: 20px;
-      color: rgba(0, 240, 255, 0.8);
-      font-size: 0.85rem;
+      background: linear-gradient(135deg, rgba(0, 255, 255, 0.08), rgba(0, 200, 255, 0.05));
+      backdrop-filter: blur(15px) saturate(180%);
+      border: 1px solid rgba(0, 255, 255, 0.25);
+      padding: 6px 18px;
+      border-radius: 18px;
+      color: rgba(0, 255, 255, 0.9);
+      font-size: 0.8rem;
       font-weight: 600;
-      letter-spacing: 1px;
+      letter-spacing: 1.5px;
       text-transform: uppercase;
       transition: all 0.3s ease;
-      box-shadow: 0 0 15px rgba(0, 240, 255, 0.1);
-      text-shadow: 0 0 5px rgba(0, 240, 255, 0.3);
+      box-shadow: 
+        0 0 20px rgba(0, 255, 255, 0.15),
+        inset 0 1px 0 rgba(255, 255, 255, 0.1);
+      text-shadow: 
+        0 0 8px rgba(0, 255, 255, 0.6),
+        0 0 15px rgba(0, 255, 255, 0.3);
+      position: relative;
     }
 
-    /* Error Toast */
+    .status-badge::before {
+      content: '';
+      position: absolute;
+      inset: -1px;
+      border-radius: inherit;
+      padding: 1px;
+      background: linear-gradient(90deg, rgba(0, 255, 255, 0.3), rgba(255, 0, 255, 0.2), rgba(0, 255, 255, 0.3));
+      -webkit-mask: linear-gradient(#fff 0 0) content-box, linear-gradient(#fff 0 0);
+      -webkit-mask-composite: xor;
+      mask-composite: exclude;
+      opacity: 0.5;
+      animation: shimmer 3s linear infinite;
+    }
+
+    @keyframes shimmer {
+      0% { background-position: -100% 0; }
+      100% { background-position: 200% 0; }
+    }
+
+    /* Error Toast - Futuristic */
     .error-toast {
-      background: rgba(30, 5, 10, 0.9);
-      border-left: 4px solid #ff2a6d;
-      padding: 12px 20px;
-      border-radius: 8px;
-      color: #ffd6e0;
-      font-size: 0.9rem;
-      backdrop-filter: blur(12px);
-      box-shadow: 0 8px 30px rgba(0, 0, 0, 0.6), 0 0 20px rgba(255, 42, 109, 0.2);
+      background: linear-gradient(135deg, rgba(255, 0, 100, 0.15), rgba(200, 0, 80, 0.1));
+      border: 1px solid rgba(255, 0, 100, 0.4);
+      padding: 10px 18px;
+      border-radius: 12px;
+      color: #ffcce0;
+      font-size: 0.85rem;
+      backdrop-filter: blur(20px) saturate(180%);
+      box-shadow: 
+        0 8px 32px rgba(0, 0, 0, 0.6), 
+        0 0 30px rgba(255, 0, 100, 0.2),
+        inset 0 1px 0 rgba(255, 255, 255, 0.1);
       display: flex;
       align-items: center;
-      gap: 12px;
-      animation: slideIn 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+      gap: 10px;
+      animation: slideIn 0.35s cubic-bezier(0.34, 1.56, 0.64, 1);
       pointer-events: auto;
-      max-width: 90%;
-      border: 1px solid rgba(255, 42, 109, 0.3);
+      max-width: 88%;
+      position: relative;
+    }
+
+    .error-toast::before {
+      content: '';
+      position: absolute;
+      left: 0;
+      top: 0;
+      bottom: 0;
+      width: 3px;
+      background: linear-gradient(180deg, #ff0066, #ff3388);
+      border-radius: 12px 0 0 12px;
+      box-shadow: 0 0 10px rgba(255, 0, 100, 0.6);
     }
 
     .error-icon {
       display: flex;
       align-items: center;
       justify-content: center;
-      color: #ff2a6d;
-      filter: drop-shadow(0 0 5px rgba(255, 42, 109, 0.6));
+      color: #ff3388;
+      filter: drop-shadow(0 0 6px rgba(255, 0, 100, 0.8));
+      animation: pulse-error 2s ease-in-out infinite;
     }
 
-    /* Processing State (Memory) */
+    @keyframes pulse-error {
+      0%, 100% { 
+        filter: drop-shadow(0 0 6px rgba(255, 0, 100, 0.8));
+      }
+      50% { 
+        filter: drop-shadow(0 0 12px rgba(255, 0, 100, 1));
+      }
+    }
+
+    /* Processing State - Enhanced Futuristic */
     .processing-container {
       display: flex;
       align-items: center;
-      gap: 12px;
-      padding: 10px 24px;
-      background: rgba(10, 15, 25, 0.85);
-      backdrop-filter: blur(20px);
-      border: 1px solid rgba(0, 240, 255, 0.3);
-      border-radius: 30px;
-      box-shadow: 0 0 25px rgba(0, 240, 255, 0.15);
+      gap: 10px;
+      padding: 8px 20px;
+      background: linear-gradient(135deg, rgba(5, 10, 20, 0.8), rgba(10, 15, 25, 0.7));
+      backdrop-filter: blur(25px) saturate(180%);
+      border: 1px solid rgba(0, 255, 255, 0.3);
+      border-radius: 25px;
+      box-shadow: 
+        0 0 30px rgba(0, 255, 255, 0.2),
+        0 8px 20px rgba(0, 0, 0, 0.5),
+        inset 0 1px 0 rgba(255, 255, 255, 0.1);
       animation: fadeIn 0.3s ease;
       z-index: 30;
     }
 
     .processing-spinner {
       position: relative;
-      width: 24px;
-      height: 24px;
+      width: 22px;
+      height: 22px;
     }
 
     .processing-spinner::before {
@@ -115,30 +167,31 @@ export class StatusDisplay extends LitElement {
       position: absolute;
       inset: 0;
       border-radius: 50%;
-      border: 2px solid rgba(0, 240, 255, 0.1);
-      border-top-color: #00f0ff;
-      border-right-color: #00f0ff;
-      animation: spin 1s cubic-bezier(0.4, 0, 0.2, 1) infinite;
-      filter: drop-shadow(0 0 4px #00f0ff);
+      border: 2px solid rgba(0, 255, 255, 0.1);
+      border-top-color: #00ffff;
+      border-right-color: #00ffff;
+      animation: spin 0.8s cubic-bezier(0.4, 0, 0.2, 1) infinite;
+      filter: drop-shadow(0 0 6px #00ffff);
     }
     
     .processing-spinner::after {
       content: '';
       position: absolute;
-      inset: 5px;
+      inset: 4px;
       border-radius: 50%;
       border: 2px solid transparent;
-      border-top-color: rgba(188, 19, 254, 0.8);
-      animation: spin 0.6s linear infinite reverse;
-      filter: drop-shadow(0 0 3px #bc13fe);
+      border-top-color: rgba(255, 0, 255, 0.9);
+      animation: spin 0.5s linear infinite reverse;
+      filter: drop-shadow(0 0 4px #ff00ff);
     }
 
     .processing-text {
-      color: #e0f7fa;
+      color: #ffffff;
       font-weight: 600;
-      font-size: 0.9rem;
-      letter-spacing: 0.5px;
+      font-size: 0.85rem;
+      letter-spacing: 1px;
       text-transform: uppercase;
+      text-shadow: 0 0 10px rgba(0, 255, 255, 0.5);
     }
 
     @keyframes spin {
@@ -151,25 +204,40 @@ export class StatusDisplay extends LitElement {
     }
 
     @keyframes slideIn {
-      from { opacity: 0; transform: translateY(-20px) scale(0.9); }
-      to { opacity: 1; transform: translateY(0) scale(1); }
+      from { 
+        opacity: 0;
+        transform: translateY(-15px) scale(0.95);
+        filter: blur(3px);
+      }
+      to { 
+        opacity: 1;
+        transform: translateY(0) scale(1);
+        filter: blur(0);
+      }
     }
     
     .fallback-banner {
-      background: rgba(255, 153, 0, 0.1);
-      border: 1px solid rgba(255, 187, 92, 0.4);
-      color: #ffd08a;
-      padding: 12px 20px;
-      border-radius: 14px;
-      font-size: 0.85rem;
+      background: linear-gradient(135deg, rgba(255, 170, 0, 0.12), rgba(255, 140, 0, 0.08));
+      border: 1px solid rgba(255, 187, 92, 0.35);
+      color: #ffe0a0;
+      padding: 10px 18px;
+      border-radius: 12px;
+      font-size: 0.8rem;
       display: flex;
       flex-direction: column;
-      gap: 4px;
+      gap: 3px;
       text-align: left;
       width: 100%;
-      max-width: 420px;
-      box-shadow: 0 0 20px rgba(255, 153, 0, 0.1);
-      backdrop-filter: blur(10px);
+      max-width: 400px;
+      box-shadow: 
+        0 0 25px rgba(255, 153, 0, 0.15),
+        0 4px 15px rgba(0, 0, 0, 0.4),
+        inset 0 1px 0 rgba(255, 255, 255, 0.1);
+      backdrop-filter: blur(15px) saturate(180%);
+    }
+
+    .fallback-banner strong {
+      text-shadow: 0 0 10px rgba(255, 170, 0, 0.5);
     }
   `;
 

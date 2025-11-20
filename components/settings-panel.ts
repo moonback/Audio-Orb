@@ -56,14 +56,14 @@ export class SettingsPanel extends LitElement {
       left: 0;
       right: 0;
       bottom: 0;
-      background: rgba(0, 0, 0, 0.8);
+      background: rgba(0, 0, 0, 0.85);
       z-index: 100;
       display: flex;
       align-items: center;
       justify-content: center;
-      backdrop-filter: blur(12px);
+      backdrop-filter: blur(20px) saturate(180%);
       opacity: 0;
-      animation: fadeIn 0.25s ease-out forwards;
+      animation: fadeIn 0.2s ease-out forwards;
     }
 
     @keyframes fadeIn {
@@ -71,20 +71,24 @@ export class SettingsPanel extends LitElement {
     }
 
     .settings-panel {
-      background: var(--glass-bg);
-      border: 1px solid var(--glass-border);
-      border-radius: 24px;
-      padding: 32px;
-      width: 900px;
-      max-width: 95vw;
-      max-height: 90vh;
+      background: linear-gradient(135deg, rgba(5, 10, 20, 0.85), rgba(10, 15, 25, 0.75));
+      border: 1px solid rgba(0, 255, 255, 0.25);
+      border-radius: 20px;
+      padding: 28px;
+      width: 850px;
+      max-width: 94vw;
+      max-height: 88vh;
       overflow-y: auto;
       color: var(--text-main);
-      box-shadow: 0 0 50px rgba(0, 240, 255, 0.1), inset 0 0 20px rgba(0,0,0,0.5);
-      backdrop-filter: blur(24px);
-      transform: scale(0.9) translateY(20px);
+      box-shadow: 
+        0 0 60px rgba(0, 255, 255, 0.15),
+        0 0 100px rgba(255, 0, 255, 0.08),
+        0 20px 50px rgba(0, 0, 0, 0.6),
+        inset 0 1px 0 rgba(255, 255, 255, 0.1);
+      backdrop-filter: blur(30px) saturate(180%);
+      transform: scale(0.92) translateY(15px);
       opacity: 0;
-      animation: slideUp 0.35s cubic-bezier(0.175, 0.885, 0.32, 1.275) forwards;
+      animation: slideUp 0.3s cubic-bezier(0.34, 1.56, 0.64, 1) forwards;
       animation-delay: 0.05s;
     }
 
@@ -93,91 +97,127 @@ export class SettingsPanel extends LitElement {
     }
 
     .settings-panel::-webkit-scrollbar {
-      width: 6px;
+      width: 4px;
     }
     .settings-panel::-webkit-scrollbar-track {
-      background: transparent;
+      background: rgba(0, 0, 0, 0.2);
+      border-radius: 2px;
     }
     .settings-panel::-webkit-scrollbar-thumb {
-      background: rgba(0, 240, 255, 0.2);
-      border-radius: 3px;
+      background: linear-gradient(180deg, rgba(0, 255, 255, 0.3), rgba(255, 0, 255, 0.3));
+      border-radius: 2px;
+      box-shadow: 0 0 6px rgba(0, 255, 255, 0.4);
     }
     .settings-panel::-webkit-scrollbar-thumb:hover {
-      background: rgba(0, 240, 255, 0.4);
+      background: linear-gradient(180deg, rgba(0, 255, 255, 0.5), rgba(255, 0, 255, 0.5));
+      box-shadow: 0 0 10px rgba(0, 255, 255, 0.6);
     }
 
     .settings-header {
       display: flex;
       justify-content: space-between;
       align-items: center;
-      margin-bottom: 32px;
-      border-bottom: 1px solid var(--glass-border);
-      padding-bottom: 16px;
+      margin-bottom: 28px;
+      border-bottom: 1px solid rgba(0, 255, 255, 0.2);
+      padding-bottom: 14px;
     }
     
     .settings-header h2 {
       margin: 0;
       font-family: 'Orbitron', sans-serif;
-      font-size: 1.8rem;
+      font-size: 1.6rem;
       font-weight: 700;
-      letter-spacing: 2px;
+      letter-spacing: 3px;
       text-transform: uppercase;
-      color: var(--primary-color);
-      text-shadow: 0 0 10px rgba(0, 240, 255, 0.4);
+      color: #00ffff;
+      text-shadow: 
+        0 0 15px rgba(0, 255, 255, 0.6),
+        0 0 30px rgba(0, 255, 255, 0.3);
+      background: linear-gradient(90deg, #00ffff, #00ccff, #00ffff);
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+      background-clip: text;
     }
 
     .settings-header button {
-      background: transparent;
-      border: 1px solid var(--glass-border);
+      background: linear-gradient(135deg, rgba(255, 255, 255, 0.05), rgba(0, 0, 0, 0.1));
+      border: 1px solid rgba(0, 255, 255, 0.2);
       color: var(--text-dim);
       cursor: pointer;
       padding: 8px;
       border-radius: 50%;
-      transition: all 0.2s;
+      transition: all 0.3s cubic-bezier(0.34, 1.56, 0.64, 1);
       display: flex;
+      box-shadow: 0 2px 10px rgba(0, 0, 0, 0.3);
     }
     
     .settings-header button:hover {
-      background: rgba(0, 240, 255, 0.1);
-      color: var(--primary-color);
-      border-color: var(--primary-color);
-      transform: rotate(90deg);
-      box-shadow: 0 0 15px rgba(0, 240, 255, 0.3);
+      background: linear-gradient(135deg, rgba(0, 255, 255, 0.15), rgba(0, 200, 255, 0.1));
+      color: #00ffff;
+      border-color: #00ffff;
+      transform: rotate(90deg) scale(1.1);
+      box-shadow: 
+        0 0 20px rgba(0, 255, 255, 0.4),
+        0 4px 15px rgba(0, 0, 0, 0.4);
     }
 
     .setting-group {
-      margin-bottom: 24px;
-      background: rgba(0, 0, 0, 0.2);
-      padding: 20px;
-      border-radius: 16px;
-      border: 1px solid transparent;
-      transition: border-color 0.3s;
+      margin-bottom: 20px;
+      background: linear-gradient(135deg, rgba(0, 0, 0, 0.3), rgba(0, 0, 0, 0.2));
+      padding: 18px;
+      border-radius: 14px;
+      border: 1px solid rgba(0, 255, 255, 0.08);
+      transition: all 0.3s ease;
+      position: relative;
+    }
+
+    .setting-group::before {
+      content: '';
+      position: absolute;
+      inset: 0;
+      border-radius: inherit;
+      padding: 1px;
+      background: linear-gradient(135deg, rgba(0, 255, 255, 0.2), transparent);
+      -webkit-mask: linear-gradient(#fff 0 0) content-box, linear-gradient(#fff 0 0);
+      -webkit-mask-composite: xor;
+      mask-composite: exclude;
+      opacity: 0;
+      transition: opacity 0.3s;
     }
 
     .setting-group:hover {
-      border-color: rgba(0, 240, 255, 0.1);
+      border-color: rgba(0, 255, 255, 0.2);
+      background: linear-gradient(135deg, rgba(0, 0, 0, 0.35), rgba(0, 0, 0, 0.25));
+    }
+
+    .setting-group:hover::before {
+      opacity: 1;
     }
 
     .setting-label {
-      margin-bottom: 12px;
-      font-size: 0.85rem;
-      color: var(--text-dim);
+      margin-bottom: 10px;
+      font-size: 0.8rem;
+      color: rgba(160, 215, 255, 0.9);
       display: flex;
       justify-content: space-between;
       align-items: center;
       text-transform: uppercase;
-      letter-spacing: 1.5px;
+      letter-spacing: 2px;
       font-weight: 600;
     }
 
     .setting-value {
-      color: var(--primary-color);
+      color: #00ffff;
       font-family: 'Orbitron', monospace;
-      font-size: 0.85rem;
-      background: rgba(0, 240, 255, 0.1);
-      padding: 2px 8px;
-      border-radius: 4px;
-      border: 1px solid rgba(0, 240, 255, 0.2);
+      font-size: 0.8rem;
+      background: linear-gradient(135deg, rgba(0, 255, 255, 0.12), rgba(0, 200, 255, 0.08));
+      padding: 3px 10px;
+      border-radius: 6px;
+      border: 1px solid rgba(0, 255, 255, 0.25);
+      box-shadow: 
+        0 0 10px rgba(0, 255, 255, 0.1),
+        inset 0 1px 0 rgba(255, 255, 255, 0.1);
+      text-shadow: 0 0 8px rgba(0, 255, 255, 0.5);
     }
 
     .device-select {
@@ -189,35 +229,40 @@ export class SettingsPanel extends LitElement {
 
     select, input[type="text"] {
       width: 100%;
-      background: var(--input-bg);
-      border: 1px solid var(--glass-border);
+      background: linear-gradient(135deg, rgba(0, 0, 0, 0.4), rgba(0, 0, 0, 0.3));
+      border: 1px solid rgba(0, 255, 255, 0.2);
       color: var(--text-main);
-      padding: 14px 16px;
-      border-radius: 12px;
-      font-size: 1rem;
+      padding: 12px 14px;
+      border-radius: 10px;
+      font-size: 0.95rem;
       font-family: 'Exo 2', sans-serif;
       outline: none;
-      transition: all 0.2s;
+      transition: all 0.3s ease;
+      box-shadow: inset 0 2px 4px rgba(0, 0, 0, 0.3);
     }
 
     select {
       cursor: pointer;
       appearance: none;
-      background-image: url("data:image/svg+xml;charset=US-ASCII,%3Csvg%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%20width%3D%22292.4%22%20height%3D%22292.4%22%3E%3Cpath%20fill%3D%22%2300f0ff%22%20d%3D%22M287%2069.4a17.6%2017.6%200%200%200-13-5.4H18.4c-5%200-9.3%201.8-12.9%205.4A17.6%2017.6%200%200%200%200%2082.2c0%205%201.8%209.3%205.4%2012.9l128%20127.9c3.6%203.6%207.8%205.4%2012.8%205.4s9.2-1.8%2012.8-5.4L287%2095c3.5-3.5%205.4-7.8%205.4-12.8%200-5-1.9-9.2-5.5-12.8z%22%2F%3E%3C%2Fsvg%3E");
+      background-image: url("data:image/svg+xml;charset=US-ASCII,%3Csvg%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%20width%3D%22292.4%22%20height%3D%22292.4%22%3E%3Cpath%20fill%3D%22%2300ffff%22%20d%3D%22M287%2069.4a17.6%2017.6%200%200%200-13-5.4H18.4c-5%200-9.3%201.8-12.9%205.4A17.6%2017.6%200%200%200%200%2082.2c0%205%201.8%209.3%205.4%2012.9l128%20127.9c3.6%203.6%207.8%205.4%2012.8%205.4s9.2-1.8%2012.8-5.4L287%2095c3.5-3.5%205.4-7.8%205.4-12.8%200-5-1.9-9.2-5.5-12.8z%22%2F%3E%3C%2Fsvg%3E");
       background-repeat: no-repeat;
-      background-position: right 16px top 50%;
-      background-size: 10px auto;
+      background-position: right 14px top 50%;
+      background-size: 9px auto;
+      padding-right: 40px;
     }
     
     select:hover, select:focus, input[type="text"]:focus {
-      border-color: var(--primary-color);
-      background-color: rgba(0, 240, 255, 0.05);
-      box-shadow: 0 0 15px rgba(0, 240, 255, 0.1);
+      border-color: rgba(0, 255, 255, 0.5);
+      background: linear-gradient(135deg, rgba(0, 255, 255, 0.08), rgba(0, 200, 255, 0.05));
+      box-shadow: 
+        0 0 20px rgba(0, 255, 255, 0.15),
+        inset 0 2px 4px rgba(0, 0, 0, 0.3);
     }
     
     select option {
       background: #0a0f19;
       color: var(--text-main);
+      padding: 10px;
     }
 
     input[type=range] {
@@ -229,120 +274,162 @@ export class SettingsPanel extends LitElement {
 
     input[type=range]::-webkit-slider-thumb {
       -webkit-appearance: none;
-      height: 18px;
-      width: 18px;
+      height: 16px;
+      width: 16px;
       border-radius: 50%;
-      background: #050505;
-      border: 2px solid var(--primary-color);
+      background: linear-gradient(135deg, #00ffff, #00ccff);
+      border: 2px solid rgba(0, 255, 255, 0.5);
       cursor: pointer;
-      margin-top: -7px; 
-      box-shadow: 0 0 10px rgba(0, 240, 255, 0.8);
-      transition: transform 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+      margin-top: -6px; 
+      box-shadow: 
+        0 0 12px rgba(0, 255, 255, 0.8),
+        0 2px 8px rgba(0, 0, 0, 0.4),
+        inset 0 1px 0 rgba(255, 255, 255, 0.3);
+      transition: all 0.2s cubic-bezier(0.34, 1.56, 0.64, 1);
     }
 
     input[type=range]::-webkit-slider-thumb:hover {
-      transform: scale(1.2);
-      background: var(--primary-color);
-      box-shadow: 0 0 20px rgba(0, 240, 255, 1);
+      transform: scale(1.15);
+      background: linear-gradient(135deg, #00ffff, #00eeff);
+      border-color: #00ffff;
+      box-shadow: 
+        0 0 20px rgba(0, 255, 255, 1),
+        0 0 30px rgba(0, 255, 255, 0.5);
+    }
+
+    input[type=range]::-webkit-slider-thumb:active {
+      transform: scale(1.05);
     }
 
     input[type=range]::-webkit-slider-runnable-track {
       width: 100%;
       height: 4px;
       cursor: pointer;
-      background: rgba(255, 255, 255, 0.1);
+      background: linear-gradient(90deg, rgba(0, 255, 255, 0.2), rgba(255, 0, 255, 0.2));
       border-radius: 2px;
+      box-shadow: inset 0 1px 2px rgba(0, 0, 0, 0.3);
     }
 
     .info-text {
-      font-size: 0.8rem;
-      color: var(--text-dim);
-      margin-top: 8px;
+      font-size: 0.75rem;
+      color: rgba(160, 215, 255, 0.7);
+      margin-top: 6px;
       line-height: 1.4;
     }
 
     textarea {
       width: 100%;
-      background: var(--input-bg);
-      border: 1px solid var(--glass-border);
-      border-radius: 12px;
+      background: linear-gradient(135deg, rgba(0, 0, 0, 0.4), rgba(0, 0, 0, 0.3));
+      border: 1px solid rgba(0, 255, 255, 0.2);
+      border-radius: 10px;
       color: var(--text-main);
-      padding: 14px;
+      padding: 12px;
       font-family: 'Exo 2', monospace;
-      font-size: 0.9rem;
+      font-size: 0.85rem;
       resize: none;
-      transition: all 0.2s;
+      transition: all 0.3s ease;
       line-height: 1.5;
+      box-shadow: inset 0 2px 4px rgba(0, 0, 0, 0.3);
     }
     
     textarea.memory-display {
-      height: 120px;
+      height: 110px;
       opacity: 0.9;
     }
 
     textarea.prompt-input {
-      height: 100px;
+      height: 90px;
       margin-top: 8px;
       font-family: 'Exo 2', sans-serif;
     }
     
     textarea:focus {
       outline: none;
-      border-color: var(--primary-color);
-      background: rgba(0, 240, 255, 0.05);
-      box-shadow: 0 0 15px rgba(0, 240, 255, 0.1);
+      border-color: rgba(0, 255, 255, 0.5);
+      background: linear-gradient(135deg, rgba(0, 255, 255, 0.08), rgba(0, 200, 255, 0.05));
+      box-shadow: 
+        0 0 20px rgba(0, 255, 255, 0.15),
+        inset 0 2px 4px rgba(0, 0, 0, 0.3);
     }
 
     .btn-small {
-      background: rgba(255, 255, 255, 0.03);
-      border: 1px solid var(--glass-border);
+      background: linear-gradient(135deg, rgba(0, 255, 255, 0.08), rgba(0, 200, 255, 0.05));
+      border: 1px solid rgba(0, 255, 255, 0.25);
       color: var(--text-main);
-      padding: 12px 20px;
-      border-radius: 12px;
+      padding: 10px 18px;
+      border-radius: 10px;
       cursor: pointer;
-      font-size: 0.9rem;
+      font-size: 0.85rem;
       font-weight: 600;
-      margin-top: 12px;
+      margin-top: 10px;
       width: 100%;
-      transition: all 0.2s;
+      transition: all 0.3s cubic-bezier(0.34, 1.56, 0.64, 1);
       display: inline-flex;
       align-items: center;
       justify-content: center;
-      gap: 10px;
+      gap: 8px;
       text-transform: uppercase;
-      letter-spacing: 1px;
+      letter-spacing: 1.5px;
+      box-shadow: 
+        0 2px 10px rgba(0, 0, 0, 0.3),
+        inset 0 1px 0 rgba(255, 255, 255, 0.1);
+      position: relative;
+      overflow: hidden;
     }
     
+    .btn-small::before {
+      content: '';
+      position: absolute;
+      inset: 0;
+      background: linear-gradient(135deg, rgba(255, 255, 255, 0.1), transparent);
+      opacity: 0;
+      transition: opacity 0.3s;
+    }
+
     .btn-small:hover {
-      background: rgba(255, 255, 255, 0.08);
-      border-color: rgba(255, 255, 255, 0.3);
+      background: linear-gradient(135deg, rgba(0, 255, 255, 0.12), rgba(0, 200, 255, 0.08));
+      border-color: rgba(0, 255, 255, 0.4);
       transform: translateY(-2px);
-      box-shadow: 0 5px 15px rgba(0,0,0,0.3);
+      box-shadow: 
+        0 4px 20px rgba(0, 0, 0, 0.4),
+        0 0 20px rgba(0, 255, 255, 0.2);
+    }
+
+    .btn-small:hover::before {
+      opacity: 1;
     }
 
     .btn-small.primary {
-      background: rgba(0, 240, 255, 0.15);
-      color: var(--primary-color);
-      border: 1px solid var(--primary-color);
-      box-shadow: 0 0 15px rgba(0, 240, 255, 0.15);
+      background: linear-gradient(135deg, rgba(0, 255, 255, 0.2), rgba(0, 200, 255, 0.15));
+      color: #00ffff;
+      border: 1px solid rgba(0, 255, 255, 0.5);
+      box-shadow: 
+        0 0 20px rgba(0, 255, 255, 0.2),
+        0 2px 10px rgba(0, 0, 0, 0.3);
+      text-shadow: 0 0 10px rgba(0, 255, 255, 0.5);
     }
 
     .btn-small.primary:hover {
-      background: rgba(0, 240, 255, 0.25);
+      background: linear-gradient(135deg, rgba(0, 255, 255, 0.3), rgba(0, 200, 255, 0.2));
       transform: translateY(-2px);
-      box-shadow: 0 0 25px rgba(0, 240, 255, 0.3);
+      box-shadow: 
+        0 0 35px rgba(0, 255, 255, 0.4),
+        0 4px 20px rgba(0, 0, 0, 0.4);
     }
     
     .btn-small.danger {
-        color: var(--danger-color);
-        border-color: rgba(255, 42, 109, 0.3);
-        background: rgba(255, 42, 109, 0.05);
+      color: #ff3388;
+      border-color: rgba(255, 0, 100, 0.4);
+      background: linear-gradient(135deg, rgba(255, 0, 100, 0.12), rgba(200, 0, 80, 0.08));
+      text-shadow: 0 0 8px rgba(255, 0, 100, 0.4);
     }
     
     .btn-small.danger:hover {
-        background: rgba(255, 42, 109, 0.15);
-        border-color: var(--danger-color);
-        box-shadow: 0 0 15px rgba(255, 42, 109, 0.2);
+      background: linear-gradient(135deg, rgba(255, 0, 100, 0.2), rgba(200, 0, 80, 0.15));
+      border-color: rgba(255, 0, 100, 0.6);
+      box-shadow: 
+        0 0 25px rgba(255, 0, 100, 0.3),
+        0 4px 20px rgba(0, 0, 0, 0.4);
     }
 
     .btn-icon {

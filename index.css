@@ -1,15 +1,37 @@
 @import url('https://fonts.googleapis.com/css2?family=Exo+2:ital,wght@0,300;0,400;0,600;1,400&family=Orbitron:wght@400;500;700;900&display=swap');
 
+* {
+  margin: 0;
+  padding: 0;
+  box-sizing: border-box;
+}
+
 body {
   display: flex;
   align-items: center;
   justify-content: center;
   margin: 0;
   padding: 0;
-  background-color: #050505;
+  background: 
+    radial-gradient(ellipse at 10% 90%, rgba(0, 255, 255, 0.06) 0%, transparent 40%),
+    radial-gradient(ellipse at 90% 10%, rgba(255, 0, 255, 0.04) 0%, transparent 40%),
+    #000000;
   color: white;
   overflow: hidden;
   height: 100vh;
   width: 100vw;
   font-family: 'Exo 2', sans-serif;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+/* Futuristic Selection */
+::selection {
+  background: rgba(0, 255, 255, 0.3);
+  color: white;
+}
+
+::-moz-selection {
+  background: rgba(0, 255, 255, 0.3);
+  color: white;
 }

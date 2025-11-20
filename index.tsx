@@ -147,24 +147,29 @@ export class GdmLiveAudio extends LitElement {
       height: 100vh;
       overflow: hidden;
       position: relative;
-      background: radial-gradient(circle at center, #1a1a2e 0%, #050505 100%);
+      background: 
+        radial-gradient(ellipse at 20% 80%, rgba(0, 240, 255, 0.08) 0%, transparent 50%),
+        radial-gradient(ellipse at 80% 20%, rgba(188, 19, 254, 0.06) 0%, transparent 50%),
+        linear-gradient(180deg, #0a0a15 0%, #000000 100%);
       color: var(--text-main, #e8eaed);
       font-size: calc(16px * var(--text-scale, 1));
       
-      /* Global Design Tokens - Futuristic Theme */
-      --glass-bg: rgba(20, 20, 30, 0.7);
-      --glass-border: rgba(100, 200, 255, 0.2);
-      --primary-color: #00f0ff; /* Cyberpunk Cyan */
-      --secondary-color: #bc13fe; /* Neon Purple */
-      --text-main: #e0f7fa;
-      --text-dim: #81d4fa;
-      --panel-glass-bg: rgba(10, 15, 25, 0.85);
-      --panel-border: rgba(0, 240, 255, 0.3);
-      --chat-user-bg: linear-gradient(135deg, rgba(0, 240, 255, 0.2), rgba(0, 100, 255, 0.2));
-      --chat-user-text: #e0f7fa;
-      --chat-ai-bg: rgba(20, 20, 30, 0.6);
-      --chat-ai-text: #b3e5fc;
-      --glow-color: rgba(0, 240, 255, 0.6);
+      /* Global Design Tokens - Ultra Futuristic Theme */
+      --glass-bg: rgba(8, 12, 20, 0.4);
+      --glass-border: rgba(0, 240, 255, 0.15);
+      --primary-color: #00ffff; /* Neon Cyan */
+      --secondary-color: #ff00ff; /* Neon Magenta */
+      --accent-color: #00ff88; /* Neon Green */
+      --text-main: #ffffff;
+      --text-dim: #a0d7ff;
+      --panel-glass-bg: rgba(5, 10, 20, 0.6);
+      --panel-border: rgba(0, 240, 255, 0.25);
+      --chat-user-bg: linear-gradient(135deg, rgba(0, 255, 255, 0.15), rgba(0, 200, 255, 0.1));
+      --chat-user-text: #ffffff;
+      --chat-ai-bg: linear-gradient(135deg, rgba(255, 0, 255, 0.08), rgba(188, 19, 254, 0.05));
+      --chat-ai-text: #e8f4ff;
+      --glow-color: rgba(0, 255, 255, 0.8);
+      --shadow-neon: 0 0 20px rgba(0, 255, 255, 0.3), 0 0 40px rgba(0, 255, 255, 0.1);
     }
 
     * {
@@ -210,7 +215,7 @@ export class GdmLiveAudio extends LitElement {
       top: 0;
       left: 0;
       right: 0;
-      padding: 20px;
+      padding: 16px;
       display: flex;
       justify-content: space-between;
       align-items: flex-start;
@@ -225,32 +230,34 @@ export class GdmLiveAudio extends LitElement {
     .header-left, .header-right {
       display: flex;
       flex-direction: column;
-      gap: 10px;
+      gap: 8px;
     }
     
     .header-center {
       position: absolute;
       left: 50%;
-      top: 20px;
+      top: 16px;
       transform: translateX(-50%);
       display: flex;
       flex-direction: column;
       align-items: center;
-      gap: 10px;
+      gap: 8px;
     }
 
-    /* Mobile Adaptations */
+    /* Mobile Adaptations - Ultra Compact */
     @media (max-width: 768px) {
       .app-header {
-        padding: 12px;
+        padding: 10px;
       }
       
       .header-left {
         align-items: flex-start;
+        gap: 4px;
       }
       
       .header-right {
         align-items: flex-end;
+        gap: 4px;
       }
       
       /* Hide less critical metrics on mobile */
@@ -260,53 +267,68 @@ export class GdmLiveAudio extends LitElement {
       
       /* Adjust Status Display position on mobile */
       .header-center {
-        top: 60px; /* Push down to avoid overlap with side indicators */
-        width: 100%;
+        top: 50px;
+        width: 90%;
       }
       
-      /* Scale down indicators */
+      /* Scale down indicators - more compact */
       latency-indicator, vu-meter {
-        transform: scale(0.85);
+        transform: scale(0.75);
         transform-origin: top center;
       }
       
       vu-meter {
-        display: none !important; /* Hide VU meter on mobile to save space */
-      }
-
-      .header-left {
-        gap: 6px;
+        display: none !important;
       }
     }
 
-    /* Chat Bubbles */
+    /* Chat Bubbles - Futuristic Compact Design */
     .chat-container {
       flex: 1;
       overflow-y: auto;
-      padding: 20px 20px 140px 20px; /* Increased bottom padding for mobile control panel */
+      padding: 15px 15px 130px 15px;
       display: flex;
       flex-direction: column;
-      gap: 16px;
-      max-width: 900px;
+      gap: 12px;
+      max-width: 800px;
       margin: 0 auto;
       width: 100%;
       height: 100%;
-      mask-image: linear-gradient(to bottom, transparent, black 5%, black 95%, transparent);
-      -webkit-mask-image: linear-gradient(to bottom, transparent, black 5%, black 95%, transparent);
+      mask-image: linear-gradient(to bottom, transparent, black 3%, black 96%, transparent);
+      -webkit-mask-image: linear-gradient(to bottom, transparent, black 3%, black 96%, transparent);
       transition: opacity 0.3s ease;
     }
 
     .chat-bubble {
-      padding: 18px 26px;
-      border-radius: 18px;
-      max-width: 85%;
-      line-height: 1.6;
-      font-size: 1rem;
-      animation: popIn 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275);
-      box-shadow: 0 4px 20px rgba(0,0,0,0.3);
+      padding: 14px 20px;
+      border-radius: 16px;
+      max-width: 80%;
+      line-height: 1.55;
+      font-size: 0.95rem;
+      animation: popIn 0.35s cubic-bezier(0.34, 1.56, 0.64, 1);
+      backdrop-filter: blur(20px);
+      -webkit-backdrop-filter: blur(20px);
+      position: relative;
       border: 1px solid transparent;
-      backdrop-filter: blur(12px);
-      -webkit-backdrop-filter: blur(12px);
+      transition: all 0.3s ease;
+    }
+
+    .chat-bubble::before {
+      content: '';
+      position: absolute;
+      inset: 0;
+      border-radius: inherit;
+      padding: 1px;
+      background: linear-gradient(135deg, var(--glass-border), transparent);
+      -webkit-mask: linear-gradient(#fff 0 0) content-box, linear-gradient(#fff 0 0);
+      -webkit-mask-composite: xor;
+      mask-composite: exclude;
+      opacity: 0;
+      transition: opacity 0.3s;
+    }
+
+    .chat-bubble:hover::before {
+      opacity: 1;
     }
 
     .chat-bubble.user {
@@ -314,78 +336,136 @@ export class GdmLiveAudio extends LitElement {
       background: var(--chat-user-bg);
       color: var(--chat-user-text);
       border-bottom-right-radius: 4px;
-      border-color: rgba(0, 240, 255, 0.3);
-      box-shadow: 0 0 15px rgba(0, 240, 255, 0.1);
+      border-color: rgba(0, 255, 255, 0.2);
+      box-shadow: 
+        0 4px 15px rgba(0, 0, 0, 0.4),
+        0 0 20px rgba(0, 255, 255, 0.08),
+        inset 0 1px 0 rgba(255, 255, 255, 0.1);
+    }
+
+    .chat-bubble.user:hover {
+      border-color: rgba(0, 255, 255, 0.4);
+      box-shadow: 
+        0 6px 20px rgba(0, 0, 0, 0.5),
+        0 0 30px rgba(0, 255, 255, 0.15);
+      transform: translateY(-1px);
     }
 
     .chat-bubble.ai {
       align-self: flex-start;
       background: var(--chat-ai-bg);
-      border: 1px solid var(--glass-border);
+      border: 1px solid rgba(255, 0, 255, 0.15);
       color: var(--chat-ai-text);
       border-bottom-left-radius: 4px;
-      box-shadow: 0 0 15px rgba(188, 19, 254, 0.05);
+      box-shadow: 
+        0 4px 15px rgba(0, 0, 0, 0.4),
+        0 0 20px rgba(255, 0, 255, 0.06),
+        inset 0 1px 0 rgba(255, 255, 255, 0.05);
+    }
+
+    .chat-bubble.ai:hover {
+      border-color: rgba(255, 0, 255, 0.3);
+      box-shadow: 
+        0 6px 20px rgba(0, 0, 0, 0.5),
+        0 0 30px rgba(255, 0, 255, 0.12);
+      transform: translateY(-1px);
     }
 
     @keyframes popIn {
-      from { opacity: 0; transform: translateY(20px) scale(0.95); }
-      to { opacity: 1; transform: translateY(0) scale(1); }
+      0% { 
+        opacity: 0;
+        transform: translateY(15px) scale(0.96);
+        filter: blur(4px);
+      }
+      100% { 
+        opacity: 1;
+        transform: translateY(0) scale(1);
+        filter: blur(0);
+      }
     }
 
-    /* Hint for Zen Mode */
+    /* Hint for Zen Mode - Enhanced */
     .zen-hint {
       position: absolute;
-      bottom: 110px; /* Position above control panel */
+      bottom: 100px;
       left: 50%;
       transform: translateX(-50%);
-      color: rgba(255, 255, 255, 0.4);
-      font-size: 0.8rem;
+      color: rgba(0, 255, 255, 0.5);
+      font-size: 0.75rem;
       opacity: 0;
       transition: opacity 1s ease;
       pointer-events: none;
       text-transform: uppercase;
-      letter-spacing: 2px;
+      letter-spacing: 3px;
       font-family: 'Orbitron', sans-serif;
-      text-shadow: 0 0 10px rgba(255,255,255,0.3);
+      text-shadow: 
+        0 0 10px rgba(0, 255, 255, 0.6),
+        0 0 20px rgba(0, 255, 255, 0.3);
+      animation: pulse-text 3s ease-in-out infinite;
     }
     
     .ui-layer.focus-mode .zen-hint {
-        opacity: 1;
+      opacity: 1;
     }
 
-    /* Custom Scrollbar */
-    .chat-container::-webkit-scrollbar { width: 6px; }
-    .chat-container::-webkit-scrollbar-track { background: transparent; }
+    @keyframes pulse-text {
+      0%, 100% { 
+        opacity: 0.5;
+        text-shadow: 
+          0 0 10px rgba(0, 255, 255, 0.6),
+          0 0 20px rgba(0, 255, 255, 0.3);
+      }
+      50% { 
+        opacity: 0.8;
+        text-shadow: 
+          0 0 15px rgba(0, 255, 255, 0.8),
+          0 0 30px rgba(0, 255, 255, 0.5);
+      }
+    }
+
+    /* Custom Scrollbar - Futuristic */
+    .chat-container::-webkit-scrollbar { 
+      width: 4px; 
+    }
+    .chat-container::-webkit-scrollbar-track { 
+      background: transparent; 
+    }
     .chat-container::-webkit-scrollbar-thumb { 
-      background: rgba(0, 240, 255, 0.2); 
-      border-radius: 3px; 
+      background: linear-gradient(180deg, rgba(0, 255, 255, 0.3), rgba(255, 0, 255, 0.3)); 
+      border-radius: 2px;
+      box-shadow: 0 0 6px rgba(0, 255, 255, 0.4);
     }
     .chat-container::-webkit-scrollbar-thumb:hover { 
-      background: rgba(0, 240, 255, 0.4); 
+      background: linear-gradient(180deg, rgba(0, 255, 255, 0.5), rgba(255, 0, 255, 0.5));
+      box-shadow: 0 0 10px rgba(0, 255, 255, 0.6);
     }
 
-    /* Mobile Adaptations */
+    /* Mobile Adaptations - Ultra Compact */
     @media (max-width: 768px) {
       .chat-container {
-        padding: 10px 15px 160px 15px; /* More space for larger mobile controls */
-        mask-image: linear-gradient(to bottom, transparent, black 2%, black 90%, transparent);
+        padding: 8px 12px 140px 12px;
+        gap: 10px;
+        mask-image: linear-gradient(to bottom, transparent, black 2%, black 92%, transparent);
       }
       
       .chat-bubble {
-        padding: 14px 18px;
-        font-size: 0.95rem;
-        max-width: 90%;
+        padding: 12px 16px;
+        font-size: 0.9rem;
+        max-width: 92%;
+        border-radius: 14px;
       }
       
       .top-bar {
-        padding: 10px;
+        padding: 8px;
       }
       
+      /* Désactiver le mode zen sur mobile */
       .zen-hint {
-        bottom: 140px;
-        font-size: 0.7rem;
-        width: 100%;
-        text-align: center;
+        display: none !important;
+      }
+
+      .visual-layer {
+        pointer-events: none !important;
       }
     }
   `;
@@ -1209,6 +1289,10 @@ export class GdmLiveAudio extends LitElement {
   }
 
   private _toggleFocusMode() {
+    // Désactiver le mode zen sur mobile (écrans < 768px)
+    if (window.innerWidth < 768) {
+      return;
+    }
     this.isFocusMode = !this.isFocusMode;
   }
 
@@ -1224,7 +1308,8 @@ export class GdmLiveAudio extends LitElement {
       </div>
       
       <!-- UI Overlay -->
-      <div class="ui-layer ${this.isFocusMode ? 'focus-mode' : ''}" @dblclick=${this._toggleFocusMode}>
+      <div class="ui-layer ${this.isFocusMode ? 'focus-mode' : ''}"
+        @dblclick=${this._toggleFocusMode}>
         
         <div class="zen-hint">Double-cliquez pour quitter le mode Zen</div>
         

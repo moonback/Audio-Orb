@@ -11,43 +11,46 @@ export class ControlPanel extends LitElement {
     :host {
       z-index: 20;
       position: absolute;
-      bottom: 40px;
+      bottom: 30px;
       left: 50%;
       transform: translateX(-50%);
       display: flex;
       align-items: center;
       justify-content: center;
-      gap: 20px;
-      padding: 14px 30px;
-      background: var(--panel-glass-bg, rgba(10, 15, 25, 0.85));
-      backdrop-filter: blur(20px);
-      -webkit-backdrop-filter: blur(20px);
-      border-radius: 60px;
-      border: 1px solid var(--panel-border, rgba(0, 240, 255, 0.2));
+      gap: 16px;
+      padding: 12px 26px;
+      background: linear-gradient(135deg, rgba(5, 10, 20, 0.7), rgba(10, 15, 25, 0.5));
+      backdrop-filter: blur(30px) saturate(180%);
+      -webkit-backdrop-filter: blur(30px) saturate(180%);
+      border-radius: 50px;
+      border: 1px solid rgba(0, 255, 255, 0.2);
       box-shadow: 
-        0 20px 50px rgba(0, 0, 0, 0.5),
-        0 0 20px rgba(0, 240, 255, 0.1),
-        inset 0 1px 0 rgba(255, 255, 255, 0.1);
+        0 8px 32px rgba(0, 0, 0, 0.6),
+        0 0 40px rgba(0, 255, 255, 0.1),
+        inset 0 1px 1px rgba(255, 255, 255, 0.15),
+        inset 0 -1px 1px rgba(0, 0, 0, 0.2);
       font-family: 'Exo 2', 'Google Sans', sans-serif;
-      transition: all 0.3s cubic-bezier(0.25, 0.8, 0.25, 1);
+      transition: all 0.3s cubic-bezier(0.34, 1.56, 0.64, 1);
     }
 
     :host(:hover) {
-      border-color: rgba(0, 240, 255, 0.4);
+      border-color: rgba(0, 255, 255, 0.5);
+      transform: translateX(-50%) translateY(-2px);
       box-shadow: 
-        0 25px 60px rgba(0, 0, 0, 0.6),
-        0 0 30px rgba(0, 240, 255, 0.15),
-        inset 0 1px 0 rgba(255, 255, 255, 0.15);
+        0 12px 40px rgba(0, 0, 0, 0.7),
+        0 0 60px rgba(0, 255, 255, 0.2),
+        0 0 100px rgba(255, 0, 255, 0.1),
+        inset 0 1px 1px rgba(255, 255, 255, 0.2);
     }
 
     button {
       outline: none;
       border: none;
-      color: var(--text-main, #e0f7fa);
+      color: var(--text-main, #ffffff);
       border-radius: 50%;
-      background: linear-gradient(145deg, rgba(255, 255, 255, 0.1), rgba(255, 255, 255, 0.02));
-      width: 56px;
-      height: 56px;
+      background: linear-gradient(135deg, rgba(255, 255, 255, 0.08), rgba(0, 0, 0, 0.1));
+      width: 52px;
+      height: 52px;
       cursor: pointer;
       display: flex;
       align-items: center;
@@ -55,111 +58,168 @@ export class ControlPanel extends LitElement {
       transition: all 0.3s cubic-bezier(0.34, 1.56, 0.64, 1);
       position: relative;
       overflow: hidden;
-      box-shadow: 0 4px 15px rgba(0, 0, 0, 0.3);
-      border: 1px solid rgba(255, 255, 255, 0.05);
+      box-shadow: 
+        0 4px 12px rgba(0, 0, 0, 0.4),
+        inset 0 1px 0 rgba(255, 255, 255, 0.1);
+      border: 1px solid rgba(0, 255, 255, 0.1);
     }
 
     button::before {
       content: '';
       position: absolute;
-      top: 0;
-      left: 0;
-      right: 0;
-      bottom: 0;
-      background: radial-gradient(circle at center, rgba(0, 240, 255, 0.3) 0%, transparent 70%);
+      inset: 0;
+      background: radial-gradient(circle at center, rgba(0, 255, 255, 0.4) 0%, transparent 70%);
       opacity: 0;
       transition: opacity 0.3s;
+      border-radius: inherit;
+    }
+
+    button::after {
+      content: '';
+      position: absolute;
+      inset: -2px;
+      background: conic-gradient(from 0deg, transparent, rgba(0, 255, 255, 0.3), transparent);
+      border-radius: inherit;
+      opacity: 0;
+      animation: rotate-border 3s linear infinite;
+      z-index: -1;
+    }
+
+    @keyframes rotate-border {
+      to { transform: rotate(360deg); }
     }
 
     button:hover {
-      transform: translateY(-3px) scale(1.08);
-      box-shadow: 0 10px 25px rgba(0, 0, 0, 0.4), 0 0 10px rgba(0, 240, 255, 0.2);
-      border-color: rgba(0, 240, 255, 0.3);
+      transform: translateY(-2px) scale(1.05);
+      box-shadow: 
+        0 8px 20px rgba(0, 0, 0, 0.5), 
+        0 0 20px rgba(0, 255, 255, 0.3),
+        inset 0 1px 0 rgba(255, 255, 255, 0.15);
+      border-color: rgba(0, 255, 255, 0.4);
     }
     
     button:hover::before {
       opacity: 1;
     }
 
+    button:hover::after {
+      opacity: 1;
+    }
+
     button:active {
       transform: translateY(0) scale(0.95);
-      box-shadow: 0 2px 8px rgba(0,0,0,0.3);
+      box-shadow: 0 2px 8px rgba(0, 0, 0, 0.4);
     }
 
     button svg {
-      width: 24px;
-      height: 24px;
+      width: 22px;
+      height: 22px;
       transition: all 0.3s ease;
-      filter: drop-shadow(0 0 2px rgba(0,0,0,0.5));
+      filter: drop-shadow(0 0 3px rgba(0, 255, 255, 0.4));
       fill: currentColor;
     }
 
-    /* Main Action Button (Start/Stop) */
+    /* Main Action Button (Start/Stop) - More Compact */
     button#startButton, 
     button#stopButton {
-      width: 72px;
-      height: 72px;
-      margin: 0 8px;
+      width: 66px;
+      height: 66px;
+      margin: 0 6px;
     }
 
-    /* Start Button Specifics */
+    /* Start Button Specifics - Enhanced Glow */
     button#startButton {
-       background: rgba(255, 255, 255, 0.05);
-       border: 1px solid rgba(0, 240, 255, 0.3);
+      background: linear-gradient(135deg, rgba(0, 255, 255, 0.1), rgba(0, 200, 255, 0.05));
+      border: 1.5px solid rgba(0, 255, 255, 0.4);
+      box-shadow: 
+        0 0 20px rgba(0, 255, 255, 0.2),
+        inset 0 1px 0 rgba(255, 255, 255, 0.1);
     }
 
     button#startButton svg {
-      fill: #00f0ff;
-      filter: drop-shadow(0 0 5px rgba(0, 240, 255, 0.6));
-      width: 32px;
-      height: 32px;
+      fill: #00ffff;
+      filter: drop-shadow(0 0 8px rgba(0, 255, 255, 0.8));
+      width: 30px;
+      height: 30px;
     }
     
     button#startButton:hover {
-      background: rgba(0, 240, 255, 0.1);
-      border-color: #00f0ff;
-      box-shadow: 0 0 30px rgba(0, 240, 255, 0.3);
+      background: linear-gradient(135deg, rgba(0, 255, 255, 0.2), rgba(0, 200, 255, 0.1));
+      border-color: #00ffff;
+      box-shadow: 
+        0 0 40px rgba(0, 255, 255, 0.4),
+        0 8px 25px rgba(0, 0, 0, 0.5),
+        inset 0 1px 0 rgba(255, 255, 255, 0.2);
     }
 
-    /* Stop Button Specifics */
+    /* Stop Button Specifics - Neon Red */
     button#stopButton {
-      background: linear-gradient(135deg, #ff0055, #990033);
-      box-shadow: 0 0 25px rgba(255, 0, 85, 0.5);
-      border: 1px solid rgba(255, 100, 150, 0.5);
+      background: linear-gradient(135deg, rgba(255, 0, 100, 0.8), rgba(200, 0, 80, 0.9));
+      box-shadow: 
+        0 0 30px rgba(255, 0, 100, 0.5),
+        0 8px 20px rgba(0, 0, 0, 0.5),
+        inset 0 1px 0 rgba(255, 255, 255, 0.2);
+      border: 1.5px solid rgba(255, 100, 150, 0.6);
     }
     
     button#stopButton svg {
       fill: white;
-      filter: drop-shadow(0 0 5px rgba(255,255,255,0.8));
-      width: 28px;
-      height: 28px;
+      filter: drop-shadow(0 0 8px rgba(255, 255, 255, 1));
+      width: 26px;
+      height: 26px;
+    }
+
+    button#stopButton:hover {
+      background: linear-gradient(135deg, rgba(255, 0, 100, 0.9), rgba(200, 0, 80, 1));
+      box-shadow: 
+        0 0 50px rgba(255, 0, 100, 0.7),
+        0 10px 30px rgba(0, 0, 0, 0.6);
     }
 
     button.recording {
-      animation: pulse-record 2s infinite;
+      animation: pulse-record 1.5s ease-in-out infinite;
     }
     
     button.recording svg {
-      animation: pulse-icon 2s infinite;
+      animation: pulse-icon 1.5s ease-in-out infinite;
     }
 
     @keyframes pulse-record {
-      0% { box-shadow: 0 0 0 0 rgba(255, 0, 85, 0.6); }
-      70% { box-shadow: 0 0 0 25px rgba(255, 0, 85, 0); }
-      100% { box-shadow: 0 0 0 0 rgba(255, 0, 85, 0); }
+      0%, 100% { 
+        box-shadow: 
+          0 0 20px rgba(255, 0, 100, 0.6),
+          0 0 0 0 rgba(255, 0, 100, 0.4);
+      }
+      50% { 
+        box-shadow: 
+          0 0 40px rgba(255, 0, 100, 0.8),
+          0 0 0 20px rgba(255, 0, 100, 0);
+      }
     }
     
     @keyframes pulse-icon {
-      0%, 100% { transform: scale(1); }
-      50% { transform: scale(0.85); }
+      0%, 100% { 
+        transform: scale(1);
+        filter: drop-shadow(0 0 8px rgba(255, 255, 255, 1));
+      }
+      50% { 
+        transform: scale(0.9);
+        filter: drop-shadow(0 0 12px rgba(255, 255, 255, 1));
+      }
     }
 
     button:disabled {
-      opacity: 0.3;
+      opacity: 0.25;
       cursor: not-allowed;
       transform: none !important;
-      box-shadow: none !important;
-      filter: grayscale(1);
+      box-shadow: 0 2px 8px rgba(0, 0, 0, 0.3) !important;
+      filter: grayscale(1) brightness(0.5);
+      border-color: rgba(255, 255, 255, 0.05) !important;
+    }
+
+    button:disabled::before,
+    button:disabled::after {
+      display: none;
     }
     
     /* Settings & Reset icons */
@@ -182,36 +242,60 @@ export class ControlPanel extends LitElement {
       /* ... unchanged ... */
     }
 
-    /* Mobile Adaptations */
+    /* Mobile Adaptations - Ultra Compact */
     @media (max-width: 600px) {
       :host {
-        bottom: 20px;
-        width: 90%;
-        max-width: 380px;
-        padding: 12px 20px;
-        gap: 12px;
-        border-radius: 40px;
+        bottom: 16px;
+        width: 92%;
+        max-width: 360px;
+        padding: 10px 18px;
+        gap: 10px;
+        border-radius: 35px;
       }
       
       button {
-        width: 48px;
-        height: 48px;
+        width: 44px;
+        height: 44px;
       }
       
       button#startButton, 
       button#stopButton {
-        width: 64px;
-        height: 64px;
+        width: 58px;
+        height: 58px;
+        margin: 0 4px;
       }
       
       button svg {
-        width: 20px;
-        height: 20px;
+        width: 18px;
+        height: 18px;
       }
       
       button#startButton svg {
-        width: 28px;
-        height: 28px;
+        width: 26px;
+        height: 26px;
+      }
+
+      button#stopButton svg {
+        width: 22px;
+        height: 22px;
+      }
+    }
+
+    @media (max-width: 400px) {
+      :host {
+        gap: 8px;
+        padding: 8px 14px;
+      }
+
+      button {
+        width: 40px;
+        height: 40px;
+      }
+
+      button#startButton, 
+      button#stopButton {
+        width: 54px;
+        height: 54px;
       }
     }
   `;
