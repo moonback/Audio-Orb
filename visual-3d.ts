@@ -13,6 +13,7 @@ import {Analyser} from './analyser';
 import {deviceDetector} from './utils/device-detection';
 
 import * as THREE from 'three';
+import { GLTFLoader } from 'three/addons/loaders/GLTFLoader.js';
 import {EffectComposer} from 'three/addons/postprocessing/EffectComposer.js';
 import {RenderPass} from 'three/addons/postprocessing/RenderPass.js';
 import {ShaderPass} from 'three/addons/postprocessing/ShaderPass.js';
@@ -32,6 +33,11 @@ export class GdmLiveAudioVisuals3D extends LitElement {
   private composer!: EffectComposer;
   private waveformGroup!: THREE.Group;
   private waveformBars: THREE.Mesh[] = [];
+  
+  // Avatar properties
+  private avatar: THREE.Group | null = null;
+  private morphMeshes: { mesh: THREE.Mesh, index: number }[] = [];
+
   private prevTime = 0;
   
   // Smoothed audio data
@@ -104,8 +110,51 @@ export class GdmLiveAudioVisuals3D extends LitElement {
     const scene = new THREE.Scene();
     scene.background = new THREE.Color(0x000000); // Pure black
 
-    const ambientLight = new THREE.AmbientLight(0xffffff, 0.05);
+    const ambientLight = new THREE.AmbientLight(0xffffff, 0.5);
     scene.add(ambientLight);
+
+    const directionalLight = new THREE.DirectionalLight(0xffffff, 2.0);
+    directionalLight.position.set(2, 2, 5);
+    scene.add(directionalLight);
+
+    const loader = new GLTFLoader();
+    const avatarUrl = 'https://models.readyplayer.me/6913458cd14d41dcac39ac9a.glb';
+
+    loader.load(avatarUrl, (gltf) => {
+      const model = gltf.scene;
+      model.scale.set(3.5, 3.5, 3.5);
+      model.position.set(0, -5.2, 0); // Centered head
+      scene.add(model);
+      this.avatar = model as THREE.Group;
+
+      model.traverse((child) => {
+        if ((child as THREE.Mesh).isMesh) {
+          const mesh = child as THREE.Mesh;
+          
+          if (mesh.morphTargetDictionary) {
+             const dict = mesh.morphTargetDictionary;
+             // Check for mouthOpen (standard), jawOpen (ARKit), or viseme_aa (Oculus)
+             // We add ALL meshes that have these targets to ensure head, teeth, and beard move together.
+             let targetIndex: number | undefined;
+             
+             if (dict['mouthOpen'] !== undefined) {
+                targetIndex = dict['mouthOpen'];
+             } else if (dict['jawOpen'] !== undefined) {
+                targetIndex = dict['jawOpen'];
+             } else if (dict['viseme_aa'] !== undefined) {
+                targetIndex = dict['viseme_aa'];
+             }
+
+             if (targetIndex !== undefined) {
+                console.log(`Adding mesh to lip-sync: ${mesh.name} (Target Index: ${targetIndex})`);
+                this.morphMeshes.push({ mesh, index: targetIndex });
+             }
+          }
+        }
+      });
+    }, undefined, (error) => {
+      console.error('Error loading avatar:', error);
+    });
 
     const camera = new THREE.PerspectiveCamera(
       75,
@@ -157,7 +206,7 @@ export class GdmLiveAudioVisuals3D extends LitElement {
       
       bar.position.x = Math.cos(angle) * baseRadius;
       bar.position.y = Math.sin(angle) * baseRadius;
-      bar.position.z = 0;
+      bar.position.z = -2.0;
       
       bar.rotation.z = angle + Math.PI / 2;
       
@@ -365,6 +414,41 @@ export class GdmLiveAudioVisuals3D extends LitElement {
     }
     
     this.waveformGroup.rotation.z += 0.001 + this.smoothedAudioData.x * 0.005;
+
+    if (this.morphMeshes.length > 0) {
+       const sensitivity = 25.0; // Sensibilité très élevée
+       
+       // Priorité aux fréquences de la parole (médiums et aigus)
+       const speechValue = (outLow * 0.3 + outMid * 3.0 + outHigh * 4.0) / 3.5;
+       let targetOpen = 0;
+       
+       // Seuil ultra-sensible
+       if (outputSum > 0.0005) { 
+          // Courbe exponentielle pour exagérer les mouvements
+          targetOpen = Math.min(1.0, Math.pow(speechValue * sensitivity, 0.6));
+       }
+       
+       // Debug log détaillé
+       if (Math.random() < 0.03) {
+          console.log('🎤 LipSync:', { 
+             outLow: outLow.toFixed(3), 
+             outMid: outMid.toFixed(3), 
+             outHigh: outHigh.toFixed(3),
+             outputSum: outputSum.toFixed(3),
+             speechValue: speechValue.toFixed(3), 
+             targetOpen: targetOpen.toFixed(3),
+             meshCount: this.morphMeshes.length 
+          });
+       }
+
+       // Mise à jour de tous les meshes
+       for (const { mesh, index } of this.morphMeshes) {
+          if (!mesh.morphTargetInfluences) continue;
+          const current = mesh.morphTargetInfluences[index];
+          // Réaction ultra-rapide pour suivre la voix en temps réel
+          mesh.morphTargetInfluences[index] = THREE.MathUtils.lerp(current, targetOpen, 0.65);
+       }
+    }
 
     this.composer.render();
   }
