@@ -78,6 +78,7 @@ export class GdmLiveAudio extends LitElement {
   @state() selectedOutputDeviceId = 'default';
   @state() canSelectOutput = false;
   @state() isCalibratingInput = false;
+  @state() showVUMeter = false;
 
   private geminiClient: GeminiClient;
   private personalityManager = new PersonalityManager();
@@ -97,6 +98,14 @@ export class GdmLiveAudio extends LitElement {
   // Store the current session's text to summarize later
   @state()
   private currentSessionTranscript: string[] = [];
+  
+  // Store messages with metadata (citations, search queries)
+  private messageMetadata: Map<number, {
+    citations?: Array<{ uri: string; title?: string }>;
+    searchQueries?: string[];
+    hasSearch?: boolean;
+  }> = new Map();
+  private messageIndex = 0;
   
   // Latency tracking
   private lastAudioSendTime = 0;
@@ -339,6 +348,75 @@ export class GdmLiveAudio extends LitElement {
       transform: translateY(-1px);
     }
 
+    .chat-bubble .message-text {
+      word-wrap: break-word;
+    }
+
+    .search-indicator {
+      position: absolute;
+      top: 8px;
+      right: 8px;
+      color: var(--accent-color);
+      opacity: 0.7;
+      animation: pulse 2s ease-in-out infinite;
+      pointer-events: none;
+    }
+
+    @keyframes pulse {
+      0%, 100% { opacity: 0.7; }
+      50% { opacity: 1; }
+    }
+
+    .citations-container {
+      margin-top: 12px;
+      padding-top: 12px;
+      border-top: 1px solid rgba(255, 255, 255, 0.1);
+      font-size: 0.85rem;
+    }
+
+    .citations-label {
+      color: var(--text-dim);
+      margin-bottom: 6px;
+      font-weight: 500;
+      font-size: 0.8rem;
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+    }
+
+    .citations-list {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 8px;
+    }
+
+    .citation-link {
+      display: inline-flex;
+      align-items: center;
+      padding: 4px 10px;
+      background: rgba(0, 255, 255, 0.1);
+      border: 1px solid rgba(0, 255, 255, 0.2);
+      border-radius: 12px;
+      color: var(--primary-color);
+      text-decoration: none;
+      transition: all 0.2s ease;
+      font-size: 0.8rem;
+      max-width: 100%;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+    }
+
+    .citation-link:hover {
+      background: rgba(0, 255, 255, 0.2);
+      border-color: rgba(0, 255, 255, 0.4);
+      transform: translateY(-1px);
+      box-shadow: 0 2px 8px rgba(0, 255, 255, 0.3);
+    }
+
+    .citation-link:active {
+      transform: translateY(0);
+    }
+
     @keyframes popIn {
       0% { 
         opacity: 0;
@@ -399,6 +477,29 @@ export class GdmLiveAudio extends LitElement {
       mini-waveform {
         display: none !important;
       }
+
+      /* Citations sur mobile */
+      .citations-container {
+        margin-top: 10px;
+        padding-top: 10px;
+        font-size: 0.8rem;
+      }
+
+      .citations-list {
+        gap: 6px;
+      }
+
+      .citation-link {
+        padding: 3px 8px;
+        font-size: 0.75rem;
+      }
+
+      .search-indicator {
+        top: 6px;
+        right: 6px;
+        width: 12px;
+        height: 12px;
+      }
     }
   `;
 
@@ -436,6 +537,7 @@ export class GdmLiveAudio extends LitElement {
     this.bassGain = parseFloat(debouncedStorage.getItem('gdm-bass') || '0');
     this.trebleGain = parseFloat(debouncedStorage.getItem('gdm-treble') || '0');
     this.audioPreset = debouncedStorage.getItem('gdm-audio-preset') || 'Personnalisé';
+    this.showVUMeter = debouncedStorage.getItem('gdm-show-vu-meter') === 'true';
     const onboardingDone = debouncedStorage.getItem('gdm-onboarding-done');
     this.showOnboarding = !onboardingDone;
     this.applyThemeVariables();
@@ -527,6 +629,12 @@ export class GdmLiveAudio extends LitElement {
     this.geminiClient.addEventListener('transcript', (e: any) => {
         const { text, source } = e.detail;
         this._updateTranscript(source, text);
+    });
+
+    // Handle grounding metadata (citations from Google Search)
+    this.geminiClient.addEventListener('grounding', (e: any) => {
+        const groundingMetadata = e.detail;
+        this._handleGroundingMetadata(groundingMetadata);
     });
     
     // Init Audio Service
@@ -855,6 +963,11 @@ export class GdmLiveAudio extends LitElement {
     }
   }
 
+  private _handleVUMeterChange(e: CustomEvent) {
+    this.showVUMeter = e.detail;
+    debouncedStorage.setItem('gdm-show-vu-meter', String(this.showVUMeter));
+  }
+
 
   private _completeOnboarding() {
     this.showOnboarding = false;
@@ -875,6 +988,8 @@ export class GdmLiveAudio extends LitElement {
 
     if (this.retryCount === 0) {
         this.currentSessionTranscript = [];
+        this.messageMetadata.clear();
+        this.messageIndex = 0;
         this.updateStatus('Prêt');
     } else {
         this.updateStatus(`Reconnexion (${this.retryCount})...`);
@@ -902,6 +1017,11 @@ export class GdmLiveAudio extends LitElement {
       systemInstruction: systemInstruction,
       inputAudioTranscription: {},
       outputAudioTranscription: {},
+      tools: [
+        {
+          googleSearch: {}
+        }
+      ],
     };
 
     try {
@@ -933,6 +1053,65 @@ export class GdmLiveAudio extends LitElement {
         this.currentSessionTranscript = updatedTranscript;
      } else {
         this.currentSessionTranscript = [...this.currentSessionTranscript, prefix + text];
+        // Track message index for AI messages to associate with grounding metadata
+        if (speaker === 'AI') {
+          this.messageIndex = this.currentSessionTranscript.length - 1;
+        }
+    }
+  }
+
+  private _handleGroundingMetadata(groundingMetadata: any) {
+    if (!groundingMetadata) return;
+    
+    // Extract citations from grounding chunks
+    const citations: Array<{ uri: string; title?: string }> = [];
+    const chunks = groundingMetadata.groundingChunks || [];
+    
+    chunks.forEach((chunk: any) => {
+      if (chunk.web?.uri) {
+        try {
+          const uri = chunk.web.uri;
+          let title = chunk.web.title;
+          
+          // Try to extract hostname from URI safely
+          try {
+            if (!title) {
+              const url = new URL(uri);
+              title = url.hostname.replace(/^www\./, '');
+            }
+          } catch (e) {
+            // If URL parsing fails, use a fallback
+            title = title || 'Source';
+          }
+          
+          citations.push({ uri, title });
+        } catch (e) {
+          console.warn('[Grounding] URI invalide ignorée:', chunk.web.uri);
+        }
+      }
+    });
+
+    // Extract search queries
+    const searchQueries = groundingMetadata.webSearchQueries || [];
+    
+    // Store metadata for the current AI message
+    if (this.messageIndex >= 0) {
+      this.messageMetadata.set(this.messageIndex, {
+        citations,
+        searchQueries,
+        hasSearch: searchQueries.length > 0
+      });
+      
+      // Trigger UI update
+      this.requestUpdate();
+      
+      // Log for debugging
+      if (searchQueries.length > 0) {
+        console.log(`[Recherche Google] ${searchQueries.length} requête(s) pour le message ${this.messageIndex}:`, searchQueries);
+        if (citations.length > 0) {
+          console.log(`[Citations] ${citations.length} source(s) trouvée(s):`, citations.map(c => c.title || c.uri));
+        }
+      }
     }
   }
 
@@ -1077,6 +1256,8 @@ export class GdmLiveAudio extends LitElement {
     this.geminiClient.disconnect();
     if (this.isRecording) await this.stopRecording();
     this.retryCount = 0;
+    this.messageMetadata.clear();
+    this.messageIndex = 0;
     this.initSession();
   }
 
@@ -1173,11 +1354,13 @@ export class GdmLiveAudio extends LitElement {
         
         <div class="app-header">
           <div class="header-left">
-             <vu-meter
-              .inputLevel=${this.inputLevel}
-              .outputLevel=${this.outputLevel}
-              .isActive=${this.isRecording || this.status === 'Parle...'}
-             ></vu-meter>
+             ${this.showVUMeter ? html`
+               <vu-meter
+                .inputLevel=${this.inputLevel}
+                .outputLevel=${this.outputLevel}
+                .isActive=${this.isRecording || this.status === 'Parle...'}
+               ></vu-meter>
+             ` : ''}
           </div>
           
           <div class="header-center">
@@ -1207,12 +1390,53 @@ export class GdmLiveAudio extends LitElement {
         </div>
 
         <div class="chat-container" id="chatContainer">
-          ${this.currentSessionTranscript.map(msg => {
+          ${this.currentSessionTranscript.map((msg, index) => {
             const isUser = msg.startsWith('User: ');
             const text = msg.replace(/^(User: |AI: )/, '');
+            const metadata = this.messageMetadata.get(index);
+            const hasCitations = metadata?.citations && metadata.citations.length > 0;
+            const hasSearch = metadata?.hasSearch;
+            
             return html`
               <div class="chat-bubble ${isUser ? 'user' : 'ai'}">
-                ${text}
+                ${hasSearch ? html`
+                  <div class="search-indicator" title="Recherche Google effectuée">
+                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                      <circle cx="11" cy="11" r="8"></circle>
+                      <path d="m21 21-4.35-4.35"></path>
+                    </svg>
+                  </div>
+                ` : ''}
+                <div class="message-text">${text}</div>
+                ${hasCitations ? html`
+                  <div class="citations-container">
+                    <div class="citations-label">Sources:</div>
+                    <div class="citations-list">
+                      ${metadata!.citations!.map((citation, idx) => {
+                        let displayTitle = citation.title || 'Source';
+                        try {
+                          if (!citation.title) {
+                            const url = new URL(citation.uri);
+                            displayTitle = url.hostname.replace(/^www\./, '');
+                          }
+                        } catch (e) {
+                          displayTitle = 'Source';
+                        }
+                        return html`
+                          <a 
+                            href="${citation.uri}" 
+                            target="_blank" 
+                            rel="noopener noreferrer"
+                            class="citation-link"
+                            title="${citation.uri}"
+                          >
+                            ${displayTitle}
+                          </a>
+                        `;
+                      })}
+                    </div>
+                  </div>
+                ` : ''}
               </div>
             `;
           })}
@@ -1250,6 +1474,7 @@ export class GdmLiveAudio extends LitElement {
           .selectedOutputDeviceId=${this.selectedOutputDeviceId}
           .canSelectOutput=${this.canSelectOutput}
           .isCalibratingInput=${this.isCalibratingInput}
+          .showVUMeter=${this.showVUMeter}
           @close-settings=${this.toggleSettings}
           @clear-memory=${this.clearMemory}
           @export-memory=${this.exportMemory}
@@ -1269,6 +1494,7 @@ export class GdmLiveAudio extends LitElement {
           @input-device-changed=${this._handleInputDeviceChange}
           @output-device-changed=${this._handleOutputDeviceChange}
           @calibrate-input=${this._handleCalibrateInput}
+          @vu-meter-changed=${this._handleVUMeterChange}
           .bassGain=${this.bassGain}
           .trebleGain=${this.trebleGain}
           .audioPreset=${this.audioPreset}

@@ -91,6 +91,33 @@ export class GeminiClient extends EventTarget {
     if (serverContent.turnComplete) {
         this.dispatchEvent(new CustomEvent('turn-complete'));
     }
+
+    // Grounding metadata (citations from Google Search)
+    const modelTurn = serverContent.modelTurn;
+    if (modelTurn) {
+      // Check for grounding metadata in various possible locations
+      const groundingMetadata = (modelTurn as any).groundingMetadata || 
+                                (serverContent as any).groundingMetadata ||
+                                ((serverContent as any).candidates?.[0]?.groundingMetadata);
+      
+      if (groundingMetadata) {
+        // Log search queries for debugging
+        const searchQueries = groundingMetadata.webSearchQueries || [];
+        if (searchQueries.length > 0) {
+          logger.info('google_search_executed', { 
+            queries: searchQueries,
+            queryCount: searchQueries.length,
+            chunks: groundingMetadata.groundingChunks?.length || 0,
+            supports: groundingMetadata.groundingSupports?.length || 0
+          });
+          console.log('[Google Search] Requêtes exécutées:', searchQueries);
+        }
+        
+        this.dispatchEvent(new CustomEvent('grounding', { 
+          detail: groundingMetadata 
+        }));
+      }
+    }
   }
 
   async sendAudio(base64Data: string) {

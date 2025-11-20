@@ -32,6 +32,7 @@ export class SettingsPanel extends LitElement {
   @property({type: String}) selectedOutputDeviceId = 'default';
   @property({type: Boolean}) canSelectOutput = false;
   @property({type: Boolean}) isCalibratingInput = false;
+  @property({type: Boolean}) showVUMeter = false;
 
   @state() isCreatingPersonality = false;
   @state() newPersonalityName = '';
@@ -651,6 +652,24 @@ export class SettingsPanel extends LitElement {
               aria-label="Taille du texte"
             >
             <div class="info-text">Agrandissez les bulles et panneaux pour améliorer la lisibilité.</div>
+          </div>
+
+          <div class="setting-group">
+            <label class="setting-label" style="cursor: pointer; user-select: none;">
+              <span>VU Meter (Indicateur audio)</span>
+              <label style="display: flex; align-items: center; gap: 8px; cursor: pointer;">
+                <input 
+                  type="checkbox" 
+                  .checked=${this.showVUMeter}
+                  @change=${(e: any) => this._dispatch('vu-meter-changed', e.target.checked)}
+                  style="width: 18px; height: 18px; cursor: pointer;"
+                >
+                <span style="font-size: 0.875rem; color: var(--text-dim);">
+                  ${this.showVUMeter ? 'Activé' : 'Désactivé'}
+                </span>
+              </label>
+            </label>
+            <div class="info-text">Affiche les niveaux audio d'entrée et de sortie en temps réel.</div>
           </div>
 
           <div class="setting-group">
