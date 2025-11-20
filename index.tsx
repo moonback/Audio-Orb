@@ -271,7 +271,11 @@ export class GdmLiveAudio extends LitElement {
       }
       
       vu-meter {
-        display: none; /* Hide VU meter on mobile to save space */
+        display: none !important; /* Hide VU meter on mobile to save space */
+      }
+
+      .header-left {
+        gap: 6px;
       }
     }
 
