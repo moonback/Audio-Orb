@@ -49,22 +49,32 @@ async function decodeAudioData(
     sampleRate,
   );
 
-  const dataInt16 = new Int16Array(data.buffer);
+  const dataInt16 = new Int16Array(data.buffer, data.byteOffset, data.length / 2);
   const l = dataInt16.length;
   const dataFloat32 = new Float32Array(l);
+  
+  // Convert PCM16 to Float32 with proper normalization
   for (let i = 0; i < l; i++) {
-    dataFloat32[i] = dataInt16[i] / 32768.0;
+    // Clamp to prevent overflow and normalize
+    const sample = Math.max(-32768, Math.min(32767, dataInt16[i]));
+    dataFloat32[i] = sample / 32768.0;
   }
-  // Extract interleaved channels
-  if (numChannels === 0) {
+  
+  // Handle mono audio (most common case)
+  if (numChannels === 1) {
     buffer.copyToChannel(dataFloat32, 0);
-  } else {
+  } else if (numChannels > 1) {
+    // Extract interleaved channels for stereo/multi-channel
     for (let i = 0; i < numChannels; i++) {
-      const channel = dataFloat32.filter(
-        (_, index) => index % numChannels === i,
-      );
-      buffer.copyToChannel(channel, i);
+      const channelData = new Float32Array(l / numChannels);
+      for (let j = 0; j < channelData.length; j++) {
+        channelData[j] = dataFloat32[j * numChannels + i];
+      }
+      buffer.copyToChannel(channelData, i);
     }
+  } else {
+    // Fallback: treat as mono
+    buffer.copyToChannel(dataFloat32, 0);
   }
 
   return buffer;

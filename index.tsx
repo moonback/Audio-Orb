@@ -614,10 +614,22 @@ export class GdmLiveAudio extends LitElement {
 
         // Decode and play
         try {
+            // Ensure audio context is running
+            if (audioService.outputContext.state === 'suspended') {
+                await audioService.outputContext.resume();
+            }
+            
             const audioBuffer = await decodeAudioData(decode(audioData), audioService.outputContext, 24000, 1);
-            audioService.playBuffer(audioBuffer, this.playbackRate, this.detune);
-        } catch(err) {
-            console.error("Error playing audio:", err);
+            
+            // Validate buffer before playing
+            if (audioBuffer && audioBuffer.length > 0 && audioBuffer.duration > 0) {
+                audioService.playBuffer(audioBuffer, this.playbackRate, this.detune);
+            } else {
+                console.warn('[Audio] Invalid audio buffer received, skipping');
+            }
+        } catch(err: any) {
+            console.error("[Audio] Error playing audio:", err?.message || err);
+            // Don't let one bad buffer break the stream
         }
     });
 

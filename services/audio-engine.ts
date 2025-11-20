@@ -26,7 +26,11 @@ export class AudioEngine extends EventTarget {
     // Input context for recording (16kHz for STT)
     this.context = new AudioContextClass({ sampleRate: 16000, latencyHint: 'interactive' });
     // Output context for playback (24kHz high quality)
-    this.outContext = new AudioContextClass({ sampleRate: 24000, latencyHint: 'interactive' });
+    // Use 'playback' hint for better stability and less glitches
+    this.outContext = new AudioContextClass({ 
+      sampleRate: 24000, 
+      latencyHint: 'playback' // Better for continuous playback, reduces glitches
+    });
     
     // Create analysers using your existing class wrapper or native nodes?
     // Your Analyser class wraps an AnalyserNode. Let's use raw nodes for internal routing 
@@ -67,6 +71,7 @@ export class AudioEngine extends EventTarget {
   
   public readonly inputGain: GainNode;
   private nextStartTime = 0;
+  private activeSources: Set<AudioBufferSourceNode> = new Set();
 
   async initialize() {
     if (this.context.state === 'suspended') await this.context.resume();
@@ -134,9 +139,13 @@ export class AudioEngine extends EventTarget {
     const currentTime = this.outContext.currentTime;
     
     // Reset time if we fell behind (gap in stream)
-    if (this.nextStartTime < currentTime) {
-        this.nextStartTime = currentTime + 0.05; // 50ms buffer safety
+    if (this.nextStartTime < currentTime - 0.1) {
+        // Reset if we're more than 100ms behind
+        this.nextStartTime = currentTime + 0.01; // Small safety margin
     }
+
+    // Ensure we don't start in the past
+    const startTime = Math.max(this.nextStartTime, currentTime + 0.01);
 
     const source = this.outContext.createBufferSource();
     source.buffer = audioBuffer;
@@ -144,13 +153,50 @@ export class AudioEngine extends EventTarget {
     source.playbackRate.value = playbackRate;
     source.detune.value = detune;
     
-    source.start(this.nextStartTime);
+    // Clean up finished sources (they're automatically removed via onended callback)
     
-    // Advance time pointer
-    this.nextStartTime += audioBuffer.duration;
+    // Track active source
+    this.activeSources.add(source);
+    
+    // Clean up when finished
+    source.onended = () => {
+      this.activeSources.delete(source);
+    };
+    
+    // Handle errors gracefully
+    try {
+      source.start(startTime);
+    } catch (e: any) {
+      // If start fails (e.g., already started or invalid time), schedule for immediate playback
+      console.warn('[AudioEngine] Buffer start failed, rescheduling:', e.message);
+      const fallbackTime = currentTime + 0.01;
+      try {
+        source.start(fallbackTime);
+        this.nextStartTime = fallbackTime + audioBuffer.duration / playbackRate;
+      } catch (e2: any) {
+        console.error('[AudioEngine] Fallback start also failed:', e2.message);
+        this.activeSources.delete(source);
+        return;
+      }
+      return;
+    }
+    
+    // Calculate actual duration considering playback rate
+    // Detune affects pitch but not duration, playbackRate affects both
+    const actualDuration = audioBuffer.duration / playbackRate;
+    this.nextStartTime = startTime + actualDuration;
   }
 
   resetPlayback() {
+    // Stop all active sources
+    this.activeSources.forEach(source => {
+      try {
+        source.stop();
+      } catch (e) {
+        // Ignore errors (source might already be stopped)
+      }
+    });
+    this.activeSources.clear();
     this.nextStartTime = 0;
   }
 
