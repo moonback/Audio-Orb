@@ -9,6 +9,7 @@ import {customElement, state} from 'lit/decorators.js';
 import {createBlob, decode, decodeAudioData} from './utils';
 import {Personality, PersonalityManager} from './personality';
 import {MemoryManager, StructuredMemory, MemoryCategory} from './memory';
+import {CustomInstructionsManager} from './custom-instructions';
 import {debouncedStorage} from './utils/storage';
 import {ThrottledRAF} from './utils/performance';
 import {deviceDetector} from './utils/device-detection';
@@ -59,6 +60,9 @@ export class GdmLiveAudio extends LitElement {
   // Personality State
   @state() personalities: Personality[] = [];
   @state() selectedPersonalityId = 'assistant';
+  
+  // Custom Instructions State
+  @state() customInstructions = [];
 
   // UI Indicators
   @state() latency = 0;
@@ -83,6 +87,7 @@ export class GdmLiveAudio extends LitElement {
   private geminiClient: GeminiClient;
   private personalityManager = new PersonalityManager();
   private memoryManager = new MemoryManager();
+  private customInstructionsManager = new CustomInstructionsManager();
   private readonly onboardingSteps = [
     { title: 'Bienvenue dans NeuroChat', description: 'Activez le micro (Espace) et regardez l’orbite réagir à votre voix.' },
     { title: 'Panneaux intelligents', description: 'Utilisez S pour ouvrir les réglages, ajuster la voix, la mémoire ou les périphériques.' },
@@ -461,6 +466,9 @@ export class GdmLiveAudio extends LitElement {
     if (!this.personalityManager.getById(this.selectedPersonalityId)) {
       this.selectedPersonalityId = 'assistant';
     }
+
+    // Init Custom Instructions
+    this.customInstructions = this.customInstructionsManager.getAll();
 
     // Initialize Gemini Service
     const apiKey = process.env.GEMINI_API_KEY || '';
@@ -907,6 +915,12 @@ export class GdmLiveAudio extends LitElement {
     const currentPersonality = this.personalityManager.getById(this.selectedPersonalityId) || this.personalityManager.getAll()[0];
     let systemInstruction = `${currentPersonality.prompt} Veuillez parler avec un ton, un accent ou un style ${this.selectedStyle}.`;
 
+    // Custom Instructions injection
+    const customInstructionsText = this.customInstructionsManager.getAllAsText();
+    if (customInstructionsText && customInstructionsText.trim().length > 0) {
+      systemInstruction += `\n\nRÈGLES DE BASE ET INSTRUCTIONS PERSONNALISÉES:\n${customInstructionsText}`;
+    }
+
     // Memory injection
     let memoryText = this.memoryManager.toText();
     if (memoryText && memoryText.trim().length > 0) {
@@ -1119,6 +1133,38 @@ export class GdmLiveAudio extends LitElement {
       this.selectedPersonalityId = 'assistant';
     }
   }
+
+  private _handleCreateCustomInstruction(e: CustomEvent) {
+    const {title, instructions, enabled} = e.detail;
+    this.customInstructionsManager.add(title, instructions, enabled);
+    this.customInstructions = this.customInstructionsManager.getAll();
+    this.reset();
+    this.updateStatus('Instruction personnalisée créée');
+  }
+
+  private _handleUpdateCustomInstruction(e: CustomEvent) {
+    const {id, updates} = e.detail;
+    this.customInstructionsManager.update(id, updates);
+    this.customInstructions = this.customInstructionsManager.getAll();
+    this.reset();
+    this.updateStatus('Instruction personnalisée mise à jour');
+  }
+
+  private _handleToggleCustomInstruction(e: CustomEvent) {
+    const id = e.detail;
+    this.customInstructionsManager.toggleEnabled(id);
+    this.customInstructions = this.customInstructionsManager.getAll();
+    this.reset();
+    this.updateStatus('Instruction personnalisée modifiée');
+  }
+
+  private _handleDeleteCustomInstruction(e: CustomEvent) {
+    const id = e.detail;
+    this.customInstructionsManager.delete(id);
+    this.customInstructions = this.customInstructionsManager.getAll();
+    this.reset();
+    this.updateStatus('Instruction personnalisée supprimée');
+  }
   
   private _downloadTranscript() {
     if (this.currentSessionTranscript.length === 0) {
@@ -1315,6 +1361,7 @@ export class GdmLiveAudio extends LitElement {
           .show=${this.showSettings}
           .personalities=${this.personalities}
           .selectedPersonalityId=${this.selectedPersonalityId}
+          .customInstructions=${this.customInstructions}
           .selectedVoice=${this.selectedVoice}
           .selectedStyle=${this.selectedStyle}
           .playbackRate=${this.playbackRate}
@@ -1340,6 +1387,10 @@ export class GdmLiveAudio extends LitElement {
           @personality-changed=${this._handlePersonalityChange}
           @create-personality=${this._handleCreatePersonality}
           @delete-personality=${this._handleDeletePersonality}
+          @create-custom-instruction=${this._handleCreateCustomInstruction}
+          @update-custom-instruction=${this._handleUpdateCustomInstruction}
+          @toggle-custom-instruction=${this._handleToggleCustomInstruction}
+          @delete-custom-instruction=${this._handleDeleteCustomInstruction}
           @bass-changed=${this._handleBassChange}
           @treble-changed=${this._handleTrebleChange}
           @audio-preset-changed=${this._handleAudioPresetChange}

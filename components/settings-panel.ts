@@ -2,6 +2,7 @@ import {LitElement, css, html} from 'lit';
 import {customElement, property, state} from 'lit/decorators.js';
 import {Personality} from '../personality';
 import {StructuredMemory, MemoryCategory} from '../memory';
+import {CustomInstructions} from '../custom-instructions';
 
 const VOICES = ['Orus', 'Puck', 'Charon', 'Kore', 'Fenrir', 'Zephyr', 'Aoede'];
 const STYLES = ['Naturel', 'Professionnel', 'Joyeux', 'Accent britannique', 'Accent français', 'Chuchotement', 'Enthousiaste'];
@@ -21,6 +22,9 @@ export class SettingsPanel extends LitElement {
   @property({type: Array}) personalities: Personality[] = [];
   @property({type: String}) selectedPersonalityId = 'assistant';
   
+  // Custom Instructions Props
+  @property({type: Array}) customInstructions: CustomInstructions[] = [];
+  
   // Audio Equalizer Props
   @property({type: Number}) bassGain = 0;
   @property({type: Number}) trebleGain = 0;
@@ -36,6 +40,11 @@ export class SettingsPanel extends LitElement {
   @state() isCreatingPersonality = false;
   @state() newPersonalityName = '';
   @state() newPersonalityPrompt = '';
+  
+  @state() isCreatingCustomInstruction = false;
+  @state() newCustomInstructionTitle = '';
+  @state() newCustomInstructionText = '';
+  @state() editingCustomInstructionId: string | null = null;
 
   static styles = css`
     :host {
@@ -460,6 +469,29 @@ export class SettingsPanel extends LitElement {
     }
   }
 
+  private _saveCustomInstruction() {
+    if (this.newCustomInstructionTitle.trim() && this.newCustomInstructionText.trim()) {
+      this._dispatch('create-custom-instruction', {
+        title: this.newCustomInstructionTitle,
+        instructions: this.newCustomInstructionText,
+        enabled: true
+      });
+      this.isCreatingCustomInstruction = false;
+      this.newCustomInstructionTitle = '';
+      this.newCustomInstructionText = '';
+    }
+  }
+
+  private _toggleCustomInstruction(id: string) {
+    this._dispatch('toggle-custom-instruction', id);
+  }
+
+  private _deleteCustomInstruction(id: string) {
+    if (confirm('Supprimer cette instruction personnalisée ?')) {
+      this._dispatch('delete-custom-instruction', id);
+    }
+  }
+
   private _exportMemory() {
     this._dispatch('export-memory', null);
   }
@@ -526,6 +558,96 @@ export class SettingsPanel extends LitElement {
                 <div style="display: flex; gap: 12px; margin-top: 12px;">
                   <button class="btn-small" @click=${() => this.isCreatingPersonality = false}>Annuler</button>
                   <button class="btn-small primary" @click=${this._savePersonality}>Enregistrer</button>
+                </div>
+              </div>
+            `}
+          </div>
+
+          <!-- Custom Instructions Section -->
+          <div class="setting-group">
+            <label class="setting-label">
+              <span>Instructions personnalisées (Règles de base)</span>
+              <span class="setting-value" style="font-size: 0.7rem; cursor: help" title="Règles de base et instructions pour définir comment l'IA doit interagir, au-delà de la personnalité">?</span>
+            </label>
+            
+            ${this.customInstructions.length > 0 ? html`
+              <div class="memory-categories" style="margin-top: 8px; max-height: 200px;">
+                ${this.customInstructions.map(instruction => html`
+                  <div class="memory-item">
+                    <div style="display: flex; flex-direction: column; gap: 4px; flex: 1;">
+                      <div style="display: flex; align-items: center; gap: 8px;">
+                        <input type="checkbox" 
+                          ?checked=${instruction.enabled}
+                          @change=${() => this._toggleCustomInstruction(instruction.id)}
+                          style="cursor: pointer;"
+                        >
+                        <span style="font-weight: 500; font-size: 0.875rem;">${instruction.title}</span>
+                      </div>
+                      ${this.editingCustomInstructionId === instruction.id ? html`
+                        <div style="margin-top: 8px; padding: 8px; background: var(--bg-input); border-radius: 6px; border: 1px solid var(--border-color);">
+                          <input type="text" 
+                            .value=${instruction.title}
+                            @input=${(e: any) => this._dispatch('update-custom-instruction', {
+                              id: instruction.id,
+                              updates: { title: e.target.value }
+                            })}
+                            placeholder="Titre"
+                            style="margin-bottom: 8px;"
+                          >
+                          <textarea class="prompt-input" 
+                            .value=${instruction.instructions}
+                            @input=${(e: any) => this._dispatch('update-custom-instruction', {
+                              id: instruction.id,
+                              updates: { instructions: e.target.value }
+                            })}
+                            placeholder="Instructions..."
+                            style="height: 80px; margin-bottom: 8px;"
+                          ></textarea>
+                          <button class="btn-small primary" @click=${() => this.editingCustomInstructionId = null} style="width: 100%;">Terminer l'édition</button>
+                        </div>
+                      ` : html`
+                        <div style="font-size: 0.8rem; color: var(--text-dim); margin-left: 24px; white-space: pre-wrap; max-height: 60px; overflow-y: auto;">
+                          ${instruction.instructions}
+                        </div>
+                      `}
+                    </div>
+                    <div style="display: flex; gap: 4px;">
+                      ${this.editingCustomInstructionId !== instruction.id ? html`
+                        <button class="btn-icon-small" @click=${() => this.editingCustomInstructionId = instruction.id} title="Modifier">✏️</button>
+                      ` : ''}
+                      <button class="btn-icon-small" @click=${() => this._deleteCustomInstruction(instruction.id)} title="Supprimer">🗑️</button>
+                    </div>
+                  </div>
+                `)}
+              </div>
+            ` : html`
+              <div style="text-align: center; padding: 16px; color: var(--text-dim); font-size: 0.875rem;">
+                Aucune instruction personnalisée. Créez-en une pour définir des règles de base.
+              </div>
+            `}
+            
+            ${!this.isCreatingCustomInstruction ? html`
+              <button class="btn-small" @click=${() => this.isCreatingCustomInstruction = true} style="margin-top: 12px;">
+                <span>+</span> Ajouter une instruction personnalisée
+              </button>
+            ` : html`
+              <div class="creation-form">
+                <input type="text" placeholder="Titre (ex. Règles de politesse)" 
+                  .value=${this.newCustomInstructionTitle}
+                  @input=${(e: any) => this.newCustomInstructionTitle = e.target.value}
+                >
+                <textarea class="prompt-input" placeholder="Instructions... (ex. Toujours répondre de manière concise, éviter les blagues inappropriées)"
+                  .value=${this.newCustomInstructionText}
+                  @input=${(e: any) => this.newCustomInstructionText = e.target.value}
+                  style="height: 100px;"
+                ></textarea>
+                <div style="display: flex; gap: 12px; margin-top: 12px;">
+                  <button class="btn-small" @click=${() => {
+                    this.isCreatingCustomInstruction = false;
+                    this.newCustomInstructionTitle = '';
+                    this.newCustomInstructionText = '';
+                  }}>Annuler</button>
+                  <button class="btn-small primary" @click=${this._saveCustomInstruction}>Enregistrer</button>
                 </div>
               </div>
             `}
