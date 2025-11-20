@@ -324,7 +324,7 @@ export class ControlPanel extends LitElement {
     return html`
       <button
         @click=${this._downloadTranscript}
-        title="Télécharger la conversation (D)"
+        title="Télécharger la conversation"
         aria-label="Télécharger la conversation"
         ?disabled=${this.isRecording}>
         <svg xmlns="http://www.w3.org/2000/svg" height="24px" viewBox="0 -960 960 960" width="24px" fill="currentColor" aria-hidden="true"><path d="M480-320 280-520l56-58 104 104v-326h80v326l104-104 56 58-200 200ZM240-160q-33 0-56.5-23.5T160-240v-120h80v120h480v-120h80v120q0 33-23.5 56.5T720-160H240Z"/></svg>
@@ -332,7 +332,7 @@ export class ControlPanel extends LitElement {
 
       <button
         @click=${this._toggleSettings}
-        title="Paramètres (S)"
+        title="Paramètres"
         aria-label="Ouvrir les paramètres">
         <svg xmlns="http://www.w3.org/2000/svg" height="24px" viewBox="0 -960 960 960" width="24px" fill="currentColor" aria-hidden="true"><path d="m370-80-16-128q-13-5-24.5-12T307-235l-119 50L78-375l103-78q-1-7-1-13.5v-27q0-6.5 1-13.5L78-585l110-190 119 50q11-8 23-15t24-12l16-128h220l16 128q13 5 24.5 12t22.5 15l119-50 110 190-103 78q1 7 1 13.5v27q0 6.5-1 13.5l103 78-110 190-119-50q-11 8-23 15t-24 12l-16 128H370Zm112-260q58 0 99-41t41-99q0-58-41-99t-99-41q-58 0-99 41t-41 99q0 58 41 99t99 41Z"/></svg>
       </button>
@@ -343,7 +343,7 @@ export class ControlPanel extends LitElement {
               id="startButton"
               @click=${this._startRecording}
               ?disabled=${this.isProcessingMemory || this.fallbackMode}
-              title="Démarrer la conversation (Espace)"
+              title="Démarrer la conversation"
               aria-label="Démarrer l'enregistrement vocal">
               <svg
                 viewBox="0 0 100 100"
@@ -361,7 +361,7 @@ export class ControlPanel extends LitElement {
               id="stopButton"
               class="recording"
               @click=${this._stopRecording}
-              title="Arrêter (Espace)"
+              title="Arrêter"
               aria-label="Arrêter l'enregistrement vocal"
               aria-pressed="true">
               <svg
@@ -379,7 +379,7 @@ export class ControlPanel extends LitElement {
         id="resetButton"
         @click=${this._reset}
         ?disabled=${this.isRecording || this.isProcessingMemory}
-        title="Réinitialiser la session (R)"
+        title="Réinitialiser la session"
         aria-label="Réinitialiser la session">
         <svg
           xmlns="http://www.w3.org/2000/svg"

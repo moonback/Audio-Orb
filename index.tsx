@@ -83,9 +83,9 @@ export class GdmLiveAudio extends LitElement {
   private personalityManager = new PersonalityManager();
   private memoryManager = new MemoryManager();
   private readonly onboardingSteps = [
-    { title: 'Bienvenue dans NeuroChat', description: 'Activez le micro (Espace) et regardez l\'orbite réagir à votre voix.' },
-    { title: 'Panneaux intelligents', description: 'Utilisez S pour ouvrir les réglages, ajuster la voix, la mémoire ou les périphériques.' },
-    { title: 'Export', description: 'Appuyez sur D pour exporter vos conversations.' }
+    { title: 'Bienvenue dans NeuroChat', description: 'Activez le micro avec le bouton central et regardez l\'orbite réagir à votre voix.' },
+    { title: 'Panneaux intelligents', description: 'Ouvrez les réglages pour ajuster la voix, la mémoire ou les périphériques.' },
+    { title: 'Export', description: 'Utilisez le bouton de téléchargement pour exporter vos conversations.' }
   ];
   private readonly retryDelays = [2000, 5000, 10000, 30000];
   private readonly fallbackRetryDelay = 60000;
@@ -104,7 +104,6 @@ export class GdmLiveAudio extends LitElement {
   // Performance optimizations
   private vuMeterRAF: ThrottledRAF;
   private latencyRAF: ThrottledRAF;
-  private keyboardHandler: ((e: KeyboardEvent) => void) | null = null;
   private adaptiveBuffer: AdaptiveBufferManager;
   private deviceInfo: ReturnType<typeof deviceDetector.detect>;
   private handleTelemetryUpdate = (event: Event) => {
@@ -463,7 +462,6 @@ export class GdmLiveAudio extends LitElement {
 
     this.startVUMeterUpdates();
     this.startLatencyUpdates();
-    this.initKeyboardShortcuts();
 
     // Bind Service Events
     this.setupServiceBindings();
@@ -1120,59 +1118,10 @@ export class GdmLiveAudio extends LitElement {
     this.updateStatus("Conversation téléchargée");
   }
 
-  private initKeyboardShortcuts() {
-    this.keyboardHandler = (e: KeyboardEvent) => {
-      const target = e.target as HTMLElement;
-      if (target.tagName === 'INPUT' || target.tagName === 'TEXTAREA') {
-        return;
-      }
-      
-      if (e.code === 'Space' && !e.repeat) {
-        e.preventDefault();
-        if (this.isRecording) {
-          this.stopRecording();
-        } else if (!this.isProcessingMemory) {
-          this.startRecording();
-        }
-      }
-      
-      if (e.code === 'Escape') {
-        if (this.showSettings) {
-          this.toggleSettings();
-          return;
-        }
-      }
-      
-      if (e.code === 'KeyS' && !e.shiftKey && !e.ctrlKey && !e.metaKey) {
-        e.preventDefault();
-        this.toggleSettings();
-      }
-      
-      if (e.code === 'KeyR' && !e.shiftKey && !e.ctrlKey && !e.metaKey) {
-        if (!this.isRecording && !this.isProcessingMemory) {
-          e.preventDefault();
-          this.reset();
-        }
-      }
-      
-      if (e.code === 'KeyD' && !e.shiftKey && !e.ctrlKey && !e.metaKey) {
-        if (!this.isRecording) {
-          e.preventDefault();
-          this._downloadTranscript();
-        }
-      }
-
-    };
-    document.addEventListener('keydown', this.keyboardHandler);
-  }
   
   disconnectedCallback() {
     super.disconnectedCallback();
     
-    if (this.keyboardHandler) {
-      document.removeEventListener('keydown', this.keyboardHandler);
-      this.keyboardHandler = null;
-    }
     
     this.vuMeterRAF?.cancel();
     this.latencyRAF?.cancel();
