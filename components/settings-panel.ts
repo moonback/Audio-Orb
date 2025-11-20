@@ -5,6 +5,7 @@ import {StructuredMemory, MemoryCategory} from '../memory';
 
 const VOICES = ['Orus', 'Puck', 'Charon', 'Kore', 'Fenrir', 'Zephyr', 'Aoede'];
 const STYLES = ['Naturel', 'Professionnel', 'Joyeux', 'Accent britannique', 'Accent français', 'Chuchotement', 'Enthousiaste'];
+type DeviceOption = { deviceId: string; label: string };
 
 @customElement('settings-panel')
 export class SettingsPanel extends LitElement {
@@ -24,6 +25,13 @@ export class SettingsPanel extends LitElement {
   @property({type: Number}) bassGain = 0;
   @property({type: Number}) trebleGain = 0;
   @property({type: String}) audioPreset = 'Personnalisé';
+  @property({type: Number}) textScale = 1;
+  @property({type: Array}) inputDevices: DeviceOption[] = [];
+  @property({type: Array}) outputDevices: DeviceOption[] = [];
+  @property({type: String}) selectedInputDeviceId = 'default';
+  @property({type: String}) selectedOutputDeviceId = 'default';
+  @property({type: Boolean}) canSelectOutput = false;
+  @property({type: Boolean}) isCalibratingInput = false;
 
   @state() isCreatingPersonality = false;
   @state() newPersonalityName = '';
@@ -31,15 +39,15 @@ export class SettingsPanel extends LitElement {
 
   static styles = css`
     :host {
-      font-family: 'Google Sans', Roboto, sans-serif;
-      --glass-bg: rgba(15, 15, 25, 0.8);
-      --glass-border: rgba(255, 255, 255, 0.1);
-      --primary-color: #8ab4f8;
-      --primary-hover: #aecbfa;
-      --danger-color: #ff8a80;
-      --text-main: #e8eaed;
-      --text-dim: #9aa0a6;
-      --input-bg: rgba(255, 255, 255, 0.05);
+      font-family: 'Exo 2', 'Google Sans', sans-serif;
+      --glass-bg: rgba(10, 15, 25, 0.9);
+      --glass-border: rgba(0, 240, 255, 0.2);
+      --primary-color: #00f0ff;
+      --primary-hover: #60f7ff;
+      --danger-color: #ff2a6d;
+      --text-main: #e0f7fa;
+      --text-dim: #81d4fa;
+      --input-bg: rgba(0, 0, 0, 0.3);
     }
 
     .settings-overlay {
@@ -48,12 +56,12 @@ export class SettingsPanel extends LitElement {
       left: 0;
       right: 0;
       bottom: 0;
-      background: rgba(0, 0, 0, 0.7);
+      background: rgba(0, 0, 0, 0.8);
       z-index: 100;
       display: flex;
       align-items: center;
       justify-content: center;
-      backdrop-filter: blur(8px);
+      backdrop-filter: blur(12px);
       opacity: 0;
       animation: fadeIn 0.25s ease-out forwards;
     }
@@ -65,14 +73,14 @@ export class SettingsPanel extends LitElement {
     .settings-panel {
       background: var(--glass-bg);
       border: 1px solid var(--glass-border);
-      border-radius: 28px;
+      border-radius: 24px;
       padding: 32px;
-      width: 1000px;
-      max-width: 90vw;
-      max-height: 85vh;
+      width: 900px;
+      max-width: 95vw;
+      max-height: 90vh;
       overflow-y: auto;
       color: var(--text-main);
-      box-shadow: 0 24px 64px rgba(0,0,0,0.6);
+      box-shadow: 0 0 50px rgba(0, 240, 255, 0.1), inset 0 0 20px rgba(0,0,0,0.5);
       backdrop-filter: blur(24px);
       transform: scale(0.9) translateY(20px);
       opacity: 0;
@@ -85,17 +93,17 @@ export class SettingsPanel extends LitElement {
     }
 
     .settings-panel::-webkit-scrollbar {
-      width: 8px;
+      width: 6px;
     }
     .settings-panel::-webkit-scrollbar-track {
       background: transparent;
     }
     .settings-panel::-webkit-scrollbar-thumb {
-      background: rgba(255, 255, 255, 0.15);
-      border-radius: 4px;
+      background: rgba(0, 240, 255, 0.2);
+      border-radius: 3px;
     }
     .settings-panel::-webkit-scrollbar-thumb:hover {
-      background: rgba(255, 255, 255, 0.25);
+      background: rgba(0, 240, 255, 0.4);
     }
 
     .settings-header {
@@ -109,16 +117,17 @@ export class SettingsPanel extends LitElement {
     
     .settings-header h2 {
       margin: 0;
-      font-size: 1.5rem;
-      font-weight: 400;
-      letter-spacing: -0.5px;
-      background: linear-gradient(90deg, #fff, #aaa);
-      -webkit-background-clip: text;
-      -webkit-text-fill-color: transparent;
+      font-family: 'Orbitron', sans-serif;
+      font-size: 1.8rem;
+      font-weight: 700;
+      letter-spacing: 2px;
+      text-transform: uppercase;
+      color: var(--primary-color);
+      text-shadow: 0 0 10px rgba(0, 240, 255, 0.4);
     }
 
     .settings-header button {
-      background: rgba(255,255,255,0.05);
+      background: transparent;
       border: 1px solid var(--glass-border);
       color: var(--text-dim);
       cursor: pointer;
@@ -129,53 +138,64 @@ export class SettingsPanel extends LitElement {
     }
     
     .settings-header button:hover {
-      background: rgba(255,255,255,0.15);
-      color: white;
+      background: rgba(0, 240, 255, 0.1);
+      color: var(--primary-color);
+      border-color: var(--primary-color);
       transform: rotate(90deg);
+      box-shadow: 0 0 15px rgba(0, 240, 255, 0.3);
     }
 
     .setting-group {
-      margin-bottom: 28px;
-      background: rgba(0,0,0,0.2);
+      margin-bottom: 24px;
+      background: rgba(0, 0, 0, 0.2);
       padding: 20px;
-      border-radius: 20px;
+      border-radius: 16px;
       border: 1px solid transparent;
       transition: border-color 0.3s;
     }
 
     .setting-group:hover {
-      border-color: rgba(255,255,255,0.05);
+      border-color: rgba(0, 240, 255, 0.1);
     }
 
     .setting-label {
       margin-bottom: 12px;
-      font-size: 0.8rem;
+      font-size: 0.85rem;
       color: var(--text-dim);
       display: flex;
       justify-content: space-between;
       align-items: center;
       text-transform: uppercase;
       letter-spacing: 1.5px;
-      font-weight: 700;
+      font-weight: 600;
     }
 
     .setting-value {
       color: var(--primary-color);
-      font-family: 'Roboto Mono', monospace;
+      font-family: 'Orbitron', monospace;
       font-size: 0.85rem;
-      background: rgba(138, 180, 248, 0.1);
-      padding: 2px 6px;
+      background: rgba(0, 240, 255, 0.1);
+      padding: 2px 8px;
       border-radius: 4px;
+      border: 1px solid rgba(0, 240, 255, 0.2);
+    }
+
+    .device-select {
+      margin-top: 12px;
+      display: flex;
+      flex-direction: column;
+      gap: 8px;
     }
 
     select, input[type="text"] {
       width: 100%;
       background: var(--input-bg);
       border: 1px solid var(--glass-border);
-      color: white;
+      color: var(--text-main);
       padding: 14px 16px;
       border-radius: 12px;
       font-size: 1rem;
+      font-family: 'Exo 2', sans-serif;
       outline: none;
       transition: all 0.2s;
     }
@@ -183,7 +203,7 @@ export class SettingsPanel extends LitElement {
     select {
       cursor: pointer;
       appearance: none;
-      background-image: url("data:image/svg+xml;charset=US-ASCII,%3Csvg%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%20width%3D%22292.4%22%20height%3D%22292.4%22%3E%3Cpath%20fill%3D%22%23FFFFFF%22%20d%3D%22M287%2069.4a17.6%2017.6%200%200%200-13-5.4H18.4c-5%200-9.3%201.8-12.9%205.4A17.6%2017.6%200%200%200%200%2082.2c0%205%201.8%209.3%205.4%2012.9l128%20127.9c3.6%203.6%207.8%205.4%2012.8%205.4s9.2-1.8%2012.8-5.4L287%2095c3.5-3.5%205.4-7.8%205.4-12.8%200-5-1.9-9.2-5.5-12.8z%22%2F%3E%3C%2Fsvg%3E");
+      background-image: url("data:image/svg+xml;charset=US-ASCII,%3Csvg%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%20width%3D%22292.4%22%20height%3D%22292.4%22%3E%3Cpath%20fill%3D%22%2300f0ff%22%20d%3D%22M287%2069.4a17.6%2017.6%200%200%200-13-5.4H18.4c-5%200-9.3%201.8-12.9%205.4A17.6%2017.6%200%200%200%200%2082.2c0%205%201.8%209.3%205.4%2012.9l128%20127.9c3.6%203.6%207.8%205.4%2012.8%205.4s9.2-1.8%2012.8-5.4L287%2095c3.5-3.5%205.4-7.8%205.4-12.8%200-5-1.9-9.2-5.5-12.8z%22%2F%3E%3C%2Fsvg%3E");
       background-repeat: no-repeat;
       background-position: right 16px top 50%;
       background-size: 10px auto;
@@ -191,13 +211,13 @@ export class SettingsPanel extends LitElement {
     
     select:hover, select:focus, input[type="text"]:focus {
       border-color: var(--primary-color);
-      background-color: rgba(255,255,255,0.1);
-      box-shadow: 0 0 0 4px rgba(138, 180, 248, 0.1);
+      background-color: rgba(0, 240, 255, 0.05);
+      box-shadow: 0 0 15px rgba(0, 240, 255, 0.1);
     }
     
     select option {
-      background: #1a1a1a;
-      color: white;
+      background: #0a0f19;
+      color: var(--text-main);
     }
 
     input[type=range] {
@@ -209,26 +229,28 @@ export class SettingsPanel extends LitElement {
 
     input[type=range]::-webkit-slider-thumb {
       -webkit-appearance: none;
-      height: 20px;
-      width: 20px;
+      height: 18px;
+      width: 18px;
       border-radius: 50%;
-      background: var(--primary-color);
+      background: #050505;
+      border: 2px solid var(--primary-color);
       cursor: pointer;
-      margin-top: -8px; 
-      box-shadow: 0 0 15px rgba(138, 180, 248, 0.5);
+      margin-top: -7px; 
+      box-shadow: 0 0 10px rgba(0, 240, 255, 0.8);
       transition: transform 0.2s cubic-bezier(0.4, 0, 0.2, 1);
-      border: 2px solid white;
     }
 
     input[type=range]::-webkit-slider-thumb:hover {
       transform: scale(1.2);
+      background: var(--primary-color);
+      box-shadow: 0 0 20px rgba(0, 240, 255, 1);
     }
 
     input[type=range]::-webkit-slider-runnable-track {
       width: 100%;
       height: 4px;
       cursor: pointer;
-      background: rgba(255,255,255,0.1);
+      background: rgba(255, 255, 255, 0.1);
       border-radius: 2px;
     }
 
@@ -246,8 +268,8 @@ export class SettingsPanel extends LitElement {
       border-radius: 12px;
       color: var(--text-main);
       padding: 14px;
-      font-family: 'Roboto Mono', monospace;
-      font-size: 0.85rem;
+      font-family: 'Exo 2', monospace;
+      font-size: 0.9rem;
       resize: none;
       transition: all 0.2s;
       line-height: 1.5;
@@ -255,67 +277,72 @@ export class SettingsPanel extends LitElement {
     
     textarea.memory-display {
       height: 120px;
-      opacity: 0.8;
+      opacity: 0.9;
     }
 
     textarea.prompt-input {
       height: 100px;
       margin-top: 8px;
-      font-family: 'Google Sans', Roboto, sans-serif;
+      font-family: 'Exo 2', sans-serif;
     }
     
     textarea:focus {
       outline: none;
       border-color: var(--primary-color);
-      background: rgba(255,255,255,0.08);
+      background: rgba(0, 240, 255, 0.05);
+      box-shadow: 0 0 15px rgba(0, 240, 255, 0.1);
     }
 
     .btn-small {
-      background: rgba(255, 255, 255, 0.05);
+      background: rgba(255, 255, 255, 0.03);
       border: 1px solid var(--glass-border);
       color: var(--text-main);
-      padding: 10px 16px;
-      border-radius: 10px;
+      padding: 12px 20px;
+      border-radius: 12px;
       cursor: pointer;
       font-size: 0.9rem;
-      font-weight: 500;
+      font-weight: 600;
       margin-top: 12px;
       width: 100%;
       transition: all 0.2s;
       display: inline-flex;
       align-items: center;
       justify-content: center;
-      gap: 8px;
+      gap: 10px;
+      text-transform: uppercase;
+      letter-spacing: 1px;
     }
     
     .btn-small:hover {
-      background: rgba(255, 255, 255, 0.1);
+      background: rgba(255, 255, 255, 0.08);
       border-color: rgba(255, 255, 255, 0.3);
-      transform: translateY(-1px);
+      transform: translateY(-2px);
+      box-shadow: 0 5px 15px rgba(0,0,0,0.3);
     }
 
     .btn-small.primary {
-      background: var(--primary-color);
-      color: #000;
-      font-weight: 600;
-      border: none;
-      box-shadow: 0 4px 12px rgba(138, 180, 248, 0.3);
+      background: rgba(0, 240, 255, 0.15);
+      color: var(--primary-color);
+      border: 1px solid var(--primary-color);
+      box-shadow: 0 0 15px rgba(0, 240, 255, 0.15);
     }
 
     .btn-small.primary:hover {
-      background: var(--primary-hover);
-      transform: translateY(-1px);
-      box-shadow: 0 6px 16px rgba(138, 180, 248, 0.4);
+      background: rgba(0, 240, 255, 0.25);
+      transform: translateY(-2px);
+      box-shadow: 0 0 25px rgba(0, 240, 255, 0.3);
     }
     
     .btn-small.danger {
         color: var(--danger-color);
-        border-color: rgba(255, 138, 128, 0.3);
+        border-color: rgba(255, 42, 109, 0.3);
+        background: rgba(255, 42, 109, 0.05);
     }
     
     .btn-small.danger:hover {
-        background: rgba(255, 138, 128, 0.1);
+        background: rgba(255, 42, 109, 0.15);
         border-color: var(--danger-color);
+        box-shadow: 0 0 15px rgba(255, 42, 109, 0.2);
     }
 
     .btn-icon {
@@ -329,7 +356,7 @@ export class SettingsPanel extends LitElement {
       transition: all 0.2s;
     }
     .btn-icon:hover { 
-        background: rgba(255,255,255,0.1);
+        background: rgba(255, 42, 109, 0.1);
         color: var(--danger-color);
     }
     
@@ -346,7 +373,7 @@ export class SettingsPanel extends LitElement {
     }
     
     .btn-icon-small:hover {
-      background: rgba(255, 138, 128, 0.2);
+      background: rgba(255, 42, 109, 0.1);
       color: var(--danger-color);
     }
     
@@ -357,19 +384,20 @@ export class SettingsPanel extends LitElement {
       margin-bottom: 16px;
       max-height: 300px;
       overflow-y: auto;
+      padding-right: 4px;
     }
     
     .memory-categories::-webkit-scrollbar {
-      width: 6px;
+      width: 4px;
     }
     
     .memory-categories::-webkit-scrollbar-thumb {
-      background: rgba(255, 255, 255, 0.15);
-      border-radius: 3px;
+      background: rgba(0, 240, 255, 0.2);
+      border-radius: 2px;
     }
     
     .memory-category {
-      background: rgba(0, 0, 0, 0.2);
+      background: rgba(0, 0, 0, 0.3);
       border-radius: 12px;
       padding: 12px;
       border: 1px solid rgba(255, 255, 255, 0.05);
@@ -379,48 +407,51 @@ export class SettingsPanel extends LitElement {
       display: flex;
       justify-content: space-between;
       align-items: center;
-      margin-bottom: 8px;
+      margin-bottom: 12px;
       padding-bottom: 8px;
       border-bottom: 1px solid rgba(255, 255, 255, 0.1);
     }
     
     .category-title {
       font-weight: 600;
-      font-size: 0.85rem;
+      font-size: 0.8rem;
       color: var(--primary-color);
       text-transform: uppercase;
-      letter-spacing: 0.5px;
+      letter-spacing: 1px;
     }
     
     .category-count {
-      background: rgba(138, 180, 248, 0.2);
+      background: rgba(0, 240, 255, 0.1);
       color: var(--primary-color);
       padding: 2px 8px;
       border-radius: 10px;
-      font-size: 0.75rem;
+      font-size: 0.7rem;
       font-weight: 600;
+      border: 1px solid rgba(0, 240, 255, 0.2);
     }
     
     .memory-items {
       display: flex;
       flex-direction: column;
-      gap: 6px;
+      gap: 8px;
     }
     
     .memory-item {
       display: flex;
       justify-content: space-between;
       align-items: center;
-      padding: 8px 12px;
-      background: rgba(255, 255, 255, 0.03);
+      padding: 10px 12px;
+      background: rgba(255, 255, 255, 0.02);
       border-radius: 8px;
       font-size: 0.85rem;
       line-height: 1.4;
       transition: background 0.2s;
+      border: 1px solid transparent;
     }
     
     .memory-item:hover {
-      background: rgba(255, 255, 255, 0.06);
+      background: rgba(255, 255, 255, 0.05);
+      border-color: rgba(255, 255, 255, 0.1);
     }
     
     .memory-item span {
@@ -438,8 +469,8 @@ export class SettingsPanel extends LitElement {
     
     .memory-actions {
       display: flex;
-      gap: 8px;
-      margin-top: 12px;
+      gap: 12px;
+      margin-top: 16px;
     }
     
     .memory-actions .btn-small {
@@ -462,6 +493,31 @@ export class SettingsPanel extends LitElement {
     
     .creation-form input {
       margin-bottom: 12px;
+    }
+
+    /* Mobile Adaptations */
+    @media (max-width: 768px) {
+      .settings-panel {
+        padding: 20px;
+        width: 100%;
+        max-width: 100%;
+        height: 100%;
+        max-height: 100%;
+        border-radius: 0;
+        border: none;
+      }
+      
+      .settings-header h2 {
+        font-size: 1.4rem;
+      }
+      
+      .btn-small {
+        padding: 14px;
+      }
+      
+      .memory-actions {
+        flex-direction: column;
+      }
     }
   `;
 
@@ -663,6 +719,23 @@ export class SettingsPanel extends LitElement {
 
           <div class="setting-group">
             <label class="setting-label">
+              <span>Taille du texte</span>
+              <span class="setting-value">${Math.round(this.textScale * 100)}%</span>
+            </label>
+            <input
+              type="range"
+              min="0.9"
+              max="1.4"
+              step="0.05"
+              .value=${String(this.textScale)}
+              @input=${(e: any) => this._dispatch('text-scale-changed', parseFloat(e.target.value))}
+              aria-label="Taille du texte"
+            >
+            <div class="info-text">Agrandissez les bulles et panneaux pour améliorer la lisibilité.</div>
+          </div>
+
+          <div class="setting-group">
+            <label class="setting-label">
               <span>Vitesse de lecture</span>
               <span class="setting-value">${this.playbackRate.toFixed(1)}x</span>
             </label>
@@ -678,6 +751,46 @@ export class SettingsPanel extends LitElement {
               aria-valuemax="2.0"
               aria-valuenow=${this.playbackRate}
             >
+          </div>
+
+          <div class="setting-group">
+            <label class="setting-label">Périphériques audio</label>
+            <div class="device-select">
+              <span style="font-size:0.85rem; color: var(--text-dim);">Microphone</span>
+              <select
+                @change=${(e: any) => this._dispatch('input-device-changed', e.target.value)}
+                aria-label="Sélectionner le microphone">
+                ${this.inputDevices.map(device => html`
+                  <option value=${device.deviceId} ?selected=${device.deviceId === this.selectedInputDeviceId}>
+                    ${device.label}
+                  </option>
+                `)}
+              </select>
+            </div>
+            <div class="device-select">
+              <span style="font-size:0.85rem; color: var(--text-dim);">Sortie audio</span>
+              <select
+                @change=${(e: any) => this._dispatch('output-device-changed', e.target.value)}
+                aria-label="Sélectionner le haut-parleur"
+                ?disabled=${!this.canSelectOutput}>
+                ${this.outputDevices.map(device => html`
+                  <option value=${device.deviceId} ?selected=${device.deviceId === this.selectedOutputDeviceId}>
+                    ${device.label}
+                  </option>
+                `)}
+              </select>
+              ${!this.canSelectOutput ? html`
+                <div class="info-text">La sélection de sortie est indisponible sur ce navigateur.</div>
+              ` : ''}
+            </div>
+            <button
+              class="btn-small primary"
+              style="margin-top: 16px;"
+              ?disabled=${this.isCalibratingInput}
+              @click=${() => this._dispatch('calibrate-input', null)}>
+              ${this.isCalibratingInput ? 'Calibrage en cours...' : 'Calibrer automatiquement le micro'}
+            </button>
+            <div class="info-text">Parlez pendant quelques secondes pour équilibrer automatiquement le niveau d’entrée.</div>
           </div>
 
           <div class="setting-group">

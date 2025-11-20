@@ -47,6 +47,10 @@ NeuroChat est une SPA construite avec Lit qui combine :
 - **Mémoire structurée** : catégorisation préférences / faits / contexte, import/export JSON, purge ciblée par catégorie.
 - **Visualisation 3D** : orbites, anneaux, particules et bloom synchronisés avec les analyseurs fréquentiels entrée/sortie.
 - **Contrôles audio** : vitesse (`playbackRate`), `detune`, égaliseur bass/treble + presets (Voix, Musique, Neutre, etc.).
+- **Résilience API** : reconnexion exponentielle, mode fallback explicite, indicateur de quota Gemini et messages d’erreur contextualisés.
+- **Observabilité & métriques** : panneau métriques (latence moyenne, taux d’erreur, uptime), logger structuré, télémétrie console.
+- **UX & accessibilité** : zoom du texte, onboarding guidé, centre d’aide contextuelle, raccourcis clavier enrichis.
+- **Audio pro** : sélection du micro et de la sortie (avec `setSinkId`), calibration automatique du gain, mini waveform temps réel et choix d’égalisation.
 - **Modes d’interaction** : Focus mode (double-clic), raccourcis clavier (Espace, S, R, D, Échap), export texte des transcriptions.
 - **Résilience** : buffer adaptatif (`AdaptiveBufferManager`), détection appareil (`deviceDetector`) pour ajuster qualité, reconnexion automatique Gemini (3 tentatives).
 - **Accessibilité** : panneaux en verre dépolis, indicateurs latence/VU, statut connecté/déconnecté en direct.
@@ -86,6 +90,7 @@ NeuroChat est une SPA construite avec Lit qui combine :
 | `npm run dev` | Démarre Vite en mode développement (http://localhost:5173 par défaut). |
 | `npm run build` | Build production (`dist/`) avec minification et hashing. |
 | `npm run preview` | Sert le build de production localement (utile pour tester HTTPS/WebSocket). |
+| `npm run lint` | Vérifie la base de code via `tsc --noEmit` (utilisé par la CI). |
 
 > Déploiement : servir le contenu de `dist/` derrière HTTPS (obligatoire pour `getUserMedia`). Prévoir un proxy backend si vous devez masquer la clé Gemini.
 
@@ -127,7 +132,7 @@ audio-orb/
 - **Qualité** : TypeScript strict, privilégier les Web Components Lit (`@customElement`). Documenter les nouvelles propriétés/événements.
 - **UI/UX** : tester sur bureau + mobile (mode focus, dégradations). Garder les scènes 3D < 60k vertices pour préserver les FPS.
 - **Audio** : ne pas bloquer le thread AudioWorklet (pur JavaScript, pas d’accès DOM). Vérifier le budget latence avant merge.
-- **Docs/tests** : mettre à jour `README`, `ARCHITECTURE.md`, `localstorage_DOCS.md` et ajouter des snapshots (GIF/vidéos) si possible.
+- **Docs/tests** : mettre à jour `README`, `ARCHITECTURE.md`, `localstorage_DOCS.md` et ajouter des snapshots (GIF/vidéos) si possible. La CI GitHub (`.github/workflows/ci.yml`) exécute `npm run lint`, `npm run build` puis un smoke test `vite preview`.
 - **Commits** : messages impératifs courts, ex. `feat: add adaptive buffer quality hints`.
 
 ## Licence

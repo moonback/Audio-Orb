@@ -7,11 +7,18 @@ export class AudioEngine extends EventTarget {
   private inputNode: MediaStreamAudioSourceNode | null = null;
   private workletNode: AudioWorkletNode | null = null;
   private outputMaster: GainNode;
+  private outputBus: GainNode;
   private bassFilter: BiquadFilterNode;
   private trebleFilter: BiquadFilterNode;
   
   public inputAnalyser: Analyser;
   public outputAnalyser: Analyser;
+  private mediaStreamDestination: MediaStreamAudioDestinationNode | null = null;
+  private outputElement: HTMLAudioElement | null = null;
+  private currentStream: MediaStream | null = null;
+  private currentOutputMode: 'default' | 'custom' = 'default';
+  private selectedInputDeviceId: string | undefined;
+  private selectedOutputDeviceId: string = 'default';
 
   constructor() {
     super();
@@ -36,10 +43,13 @@ export class AudioEngine extends EventTarget {
     this.trebleFilter.type = 'highshelf';
     this.trebleFilter.frequency.value = 4000;
 
-    // Chain: outputMaster -> bass -> treble -> destination
+    this.outputBus = this.outContext.createGain();
+
+    // Chain: outputMaster -> bass -> treble -> bus -> destination
     this.outputMaster.connect(this.bassFilter);
     this.bassFilter.connect(this.trebleFilter);
-    this.trebleFilter.connect(this.outContext.destination);
+    this.trebleFilter.connect(this.outputBus);
+    this.outputBus.connect(this.outContext.destination);
 
     // Initialize Analysers
     // We need a dummy node for input analyser before recording starts to avoid errors?
@@ -85,6 +95,8 @@ export class AudioEngine extends EventTarget {
       }
     });
 
+    this.selectedInputDeviceId = deviceId;
+    this.currentStream = stream;
     this.inputNode = this.context.createMediaStreamSource(stream);
     this.workletNode = new AudioWorkletNode(this.context, 'audio-processor');
 
@@ -110,6 +122,10 @@ export class AudioEngine extends EventTarget {
     if (this.workletNode) {
       this.workletNode.disconnect();
       this.workletNode = null;
+    }
+    if (this.currentStream) {
+      this.currentStream.getTracks().forEach(track => track.stop());
+      this.currentStream = null;
     }
     // Keep context alive for next time
   }
@@ -152,6 +168,135 @@ export class AudioEngine extends EventTarget {
 
   get masterGain() {
     return this.outputMaster;
+  }
+
+  get canSelectOutputDevice() {
+    return typeof (HTMLMediaElement.prototype as any).setSinkId === 'function';
+  }
+
+  async setOutputDevice(deviceId: string) {
+    if (!this.canSelectOutputDevice) {
+      throw new Error('Changement de sortie audio non supporté par ce navigateur');
+    }
+
+    if (deviceId === 'default') {
+      this.switchToDefaultOutput();
+      this.selectedOutputDeviceId = 'default';
+      return;
+    }
+
+    await this.switchToCustomOutput(deviceId);
+    this.selectedOutputDeviceId = deviceId;
+  }
+
+  private switchToDefaultOutput() {
+    if (this.currentOutputMode === 'default') return;
+    try {
+      this.outputBus.disconnect();
+    } catch (e) {
+      console.warn('Erreur déconnexion sortie custom', e);
+    }
+    this.outputBus.connect(this.outContext.destination);
+    this.currentOutputMode = 'default';
+    if (this.outputElement) {
+      this.outputElement.pause();
+      this.outputElement.srcObject = null;
+      this.outputElement = null;
+    }
+    this.mediaStreamDestination = null;
+  }
+
+  private async switchToCustomOutput(deviceId: string) {
+    if (!this.mediaStreamDestination) {
+      this.mediaStreamDestination = this.outContext.createMediaStreamDestination();
+    }
+    if (this.currentOutputMode !== 'custom') {
+      try {
+        this.outputBus.disconnect();
+      } catch (e) {
+        console.warn('Erreur déconnexion sortie par défaut', e);
+      }
+      this.outputBus.connect(this.mediaStreamDestination);
+      this.currentOutputMode = 'custom';
+    }
+
+    if (!this.outputElement) {
+      this.outputElement = new Audio();
+      this.outputElement.autoplay = true;
+      this.outputElement.setAttribute('playsinline', 'true');
+      this.outputElement.muted = false;
+      this.outputElement.srcObject = this.mediaStreamDestination.stream;
+    }
+
+    const sinkId = deviceId === 'default' ? '' : deviceId;
+    await (this.outputElement as any).setSinkId(sinkId);
+    await this.outputElement.play().catch(() => {});
+  }
+
+  get currentInputDeviceId() {
+    return this.selectedInputDeviceId;
+  }
+
+  get currentOutputDeviceId() {
+    return this.selectedOutputDeviceId;
+  }
+
+  async autoCalibrateInputGain(durationMs = 1500): Promise<number> {
+    const sourceNode = this.inputNode ?? await this.getTemporarySource(this.selectedInputDeviceId);
+    const analyser = this.context.createAnalyser();
+    analyser.fftSize = 2048;
+    sourceNode.connect(analyser);
+    const buffer = new Float32Array(analyser.fftSize);
+    let peak = 0;
+
+    await new Promise<void>((resolve) => {
+      const start = performance.now();
+      const sample = () => {
+        analyser.getFloatTimeDomainData(buffer);
+        for (let i = 0; i < buffer.length; i++) {
+          const value = Math.abs(buffer[i]);
+          if (value > peak) peak = value;
+        }
+        if (performance.now() - start >= durationMs) {
+          resolve();
+          return;
+        }
+        requestAnimationFrame(sample);
+      };
+      sample();
+    });
+
+    try {
+      sourceNode.disconnect(analyser);
+    } catch {
+      // ignore
+    }
+    analyser.disconnect();
+
+    const calibrationStream = (sourceNode as any).__calibrationStream as (MediaStream | undefined);
+    if (calibrationStream) {
+      calibrationStream.getTracks().forEach(track => track.stop());
+    }
+
+    const targetPeak = 0.8;
+    const newGain = peak > 0 ? targetPeak / peak : 1;
+    const clamped = Math.min(Math.max(newGain, 0.5), 3);
+    this.inputGain.gain.value = clamped;
+    return clamped;
+  }
+
+  private async getTemporarySource(deviceId?: string) {
+    const tempStream = await navigator.mediaDevices.getUserMedia({
+      audio: {
+        deviceId: deviceId ? { exact: deviceId } : undefined,
+        echoCancellation: true,
+        noiseSuppression: true,
+        autoGainControl: false
+      }
+    });
+    const src = this.context.createMediaStreamSource(tempStream);
+    (src as any).__calibrationStream = tempStream;
+    return src;
   }
 }
 

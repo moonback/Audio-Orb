@@ -15,11 +15,11 @@ Ce plan trace l’évolution du projet depuis le MVP actuel jusqu’aux releases
 
 | Thème | Objectifs | Statut |
 | --- | --- | --- |
-| Résilience API | Fallback en cas d’indispo Gemini (message clair, tempo retry), monitoring latence, exposition d’un indicateur de quota | 🔄 À faire |
-| UX & accessibilité | Mode clair, options de texte agrandi, aide contextuelle, onboarding rapide | 🚧 Planifié |
-| Observabilité | Ajout de métriques (latence moyenne, taux d’erreur) et d’un logger télescopique (Sentry / console structurée) | 🕑 À faire |
-| Audio | Choix du micro/sortie, visualisation spectrale additionnelle (mini waveform), calibration auto du gain | 🕑 À faire |
-| Tooling | Scripts de tests basiques (lint/tsc), CI minimale (build + preview) | ✅ en partie (build) |
+| Résilience API | Fallback explicite (message clair + mode dégradé), retry exponentiel, indicateur de quota, monitoring latence en direct | ✅ Livré |
+| UX & accessibilité | Mode clair, zoom texte, centre d’aide contextuelle, onboarding rapide, focus mode amélioré | ✅ Livré |
+| Observabilité | Panneau métriques (latence moyenne, taux d’erreur, uptime), logger structuré console / télémétrie, suivi VU | ✅ Livré |
+| Audio | Sélection micro/sortie, mini waveform spectrale, calibration automatique du gain, conservation des préférences | ✅ Livré |
+| Tooling | Script `npm run lint` (tsc --noEmit) + workflow CI (lint + build + preview smoke test) | ✅ Livré |
 
 ## Phase V2 – Personnalisation & Intelligence (moyen terme)
 

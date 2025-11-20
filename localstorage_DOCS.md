@@ -16,6 +16,11 @@ NeuroChat n’embarque pas de base de données serveur. Toutes les préférences
 | `gdm-treble` | `string` num. | `"2"` | `settings-panel`, `audio-engine` | Gain EQ high-shelf (dB). |
 | `gdm-audio-preset` | `string` | `"Voix"` | `settings-panel` | Nom du preset appliqué (Voix, Musique, Neutre...). |
 | `gdm-personality` | `string` | `"mentor"` | `settings-panel` | ID de la personnalité active. |
+| `gdm-text-scale` | `string` num. | `"1.1"` | `settings-panel` | Facteur d’agrandissement du texte (1 = 100 %). |
+| `gdm-input-device` | `string` | `"default"` | `settings-panel` | `deviceId` du micro choisi (fallback `default`). |
+| `gdm-output-device` | `string` | `"default"` | `settings-panel` | `deviceId` de la sortie audio (`setSinkId`). |
+| `gdm-onboarding-done` | `string` bool | `"true"` | `onboarding-modal` | Flag qui évite de réafficher le tutoriel. |
+| `gdm-quota-state` | `string` JSON | `{"used":12,"resetAt":1732147200000}` | `GdmLiveAudio` | Cache local du quota Gemini (requests + timestamp reset). |
 | `gdm-structured-memory` | `string` JSON | Voir format ci-dessous | `MemoryManager` | Mémoire catégorisée (préférences, faits, contexte). |
 | `gdm-memory` | `string` texte | `"- L’utilisateur aime le jazz"` | `MemoryManager` | **Legacy** : ancienne mémoire brute (migrée au démarrage). |
 | `audio_orb_custom_personalities` | `string` JSON | `[{"id":"custom_...","name":"Coach",...}]` | `PersonalityManager` | Personnalités créées par l’utilisateur (prompt complet). |
@@ -65,6 +70,21 @@ Structure :
 - `PersonalityManager.add()` génère `id = custom_${Date.now()}`.
 - Suppression via `PersonalityManager.delete(id)` (ex: depuis Settings).
 - Les personnalités par défaut (assistant, friend, mentor…) ne résident pas dans le stockage : elles sont codées en dur dans `DEFAULT_PERSONALITIES`.
+
+## Quota Gemini (`gdm-quota-state`)
+
+Structure :
+
+```json
+{
+  "used": 14,
+  "resetAt": 1732147200000
+}
+```
+
+- `used` : incrément local (≈ nombre de requêtes, basé sur `usageMetadata.totalTokenCount` → 1 unité par ~1k tokens).
+- `resetAt` : timestamp (ms) du prochain reset quotidien (minuit locale).
+- Mécanisme : `registerQuotaUsage()` s’exécute à chaque `quota` event du `GeminiClient`, alimente l’indicateur HUD et prévoit un reset si `Date.now() > resetAt`.
 
 ## Stratégies de nettoyage
 

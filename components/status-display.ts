@@ -6,6 +6,8 @@ export class StatusDisplay extends LitElement {
   @property({type: String}) status = '';
   @property({type: String}) error = '';
   @property({type: Boolean}) isProcessing = false;
+  @property({type: String}) fallbackMessage = '';
+  @property({type: Number}) nextRetrySeconds = 0;
 
   // Internal state to handle toast animation
   @state() private _visibleError: string = '';
@@ -31,13 +33,9 @@ export class StatusDisplay extends LitElement {
 
   static styles = css`
     :host {
-      position: absolute;
-      top: 80px; /* Below latency indicator roughly */
-      left: 50%;
-      transform: translateX(-50%);
       z-index: 20;
       text-align: center;
-      font-family: 'Google Sans', Roboto, sans-serif;
+      font-family: 'Exo 2', 'Google Sans', sans-serif;
       pointer-events: none;
       width: 100%;
       max-width: 600px;
@@ -49,43 +47,46 @@ export class StatusDisplay extends LitElement {
 
     /* Status Badge (Ready, Listening...) */
     .status-badge {
-      background: rgba(10, 10, 20, 0.6);
+      background: rgba(0, 0, 0, 0.4);
       backdrop-filter: blur(8px);
-      border: 1px solid rgba(255, 255, 255, 0.1);
-      padding: 8px 16px;
+      border: 1px solid rgba(0, 240, 255, 0.2);
+      padding: 8px 20px;
       border-radius: 20px;
-      color: rgba(255, 255, 255, 0.7);
+      color: rgba(0, 240, 255, 0.8);
       font-size: 0.85rem;
-      font-weight: 500;
-      letter-spacing: 0.5px;
+      font-weight: 600;
+      letter-spacing: 1px;
       text-transform: uppercase;
       transition: all 0.3s ease;
-      box-shadow: 0 4px 10px rgba(0,0,0,0.2);
+      box-shadow: 0 0 15px rgba(0, 240, 255, 0.1);
+      text-shadow: 0 0 5px rgba(0, 240, 255, 0.3);
     }
 
     /* Error Toast */
     .error-toast {
-      background: rgba(30, 5, 5, 0.9);
-      border-left: 4px solid #ff5252;
+      background: rgba(30, 5, 10, 0.9);
+      border-left: 4px solid #ff2a6d;
       padding: 12px 20px;
       border-radius: 8px;
-      color: #ffdede;
+      color: #ffd6e0;
       font-size: 0.9rem;
-      backdrop-filter: blur(10px);
-      box-shadow: 0 8px 24px rgba(0, 0, 0, 0.4);
+      backdrop-filter: blur(12px);
+      box-shadow: 0 8px 30px rgba(0, 0, 0, 0.6), 0 0 20px rgba(255, 42, 109, 0.2);
       display: flex;
       align-items: center;
       gap: 12px;
       animation: slideIn 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275);
-      pointer-events: auto; /* Allow clicking close button if we had one */
+      pointer-events: auto;
       max-width: 90%;
+      border: 1px solid rgba(255, 42, 109, 0.3);
     }
 
     .error-icon {
       display: flex;
       align-items: center;
       justify-content: center;
-      color: #ff5252;
+      color: #ff2a6d;
+      filter: drop-shadow(0 0 5px rgba(255, 42, 109, 0.6));
     }
 
     /* Processing State (Memory) */
@@ -94,11 +95,11 @@ export class StatusDisplay extends LitElement {
       align-items: center;
       gap: 12px;
       padding: 10px 24px;
-      background: rgba(20, 20, 40, 0.8);
-      backdrop-filter: blur(16px);
-      border: 1px solid rgba(138, 180, 248, 0.3);
+      background: rgba(10, 15, 25, 0.85);
+      backdrop-filter: blur(20px);
+      border: 1px solid rgba(0, 240, 255, 0.3);
       border-radius: 30px;
-      box-shadow: 0 8px 32px rgba(0, 0, 0, 0.3);
+      box-shadow: 0 0 25px rgba(0, 240, 255, 0.15);
       animation: fadeIn 0.3s ease;
       z-index: 30;
     }
@@ -114,26 +115,30 @@ export class StatusDisplay extends LitElement {
       position: absolute;
       inset: 0;
       border-radius: 50%;
-      border: 3px solid rgba(138, 180, 248, 0.2);
-      border-top-color: #8ab4f8;
-      border-right-color: #8ab4f8;
+      border: 2px solid rgba(0, 240, 255, 0.1);
+      border-top-color: #00f0ff;
+      border-right-color: #00f0ff;
       animation: spin 1s cubic-bezier(0.4, 0, 0.2, 1) infinite;
+      filter: drop-shadow(0 0 4px #00f0ff);
     }
     
     .processing-spinner::after {
       content: '';
       position: absolute;
-      inset: 4px;
+      inset: 5px;
       border-radius: 50%;
       border: 2px solid transparent;
-      border-top-color: rgba(138, 180, 248, 0.6);
+      border-top-color: rgba(188, 19, 254, 0.8);
       animation: spin 0.6s linear infinite reverse;
+      filter: drop-shadow(0 0 3px #bc13fe);
     }
 
     .processing-text {
-      color: #e8eaed;
-      font-weight: 500;
+      color: #e0f7fa;
+      font-weight: 600;
       font-size: 0.9rem;
+      letter-spacing: 0.5px;
+      text-transform: uppercase;
     }
 
     @keyframes spin {
@@ -149,7 +154,32 @@ export class StatusDisplay extends LitElement {
       from { opacity: 0; transform: translateY(-20px) scale(0.9); }
       to { opacity: 1; transform: translateY(0) scale(1); }
     }
+    
+    .fallback-banner {
+      background: rgba(255, 153, 0, 0.1);
+      border: 1px solid rgba(255, 187, 92, 0.4);
+      color: #ffd08a;
+      padding: 12px 20px;
+      border-radius: 14px;
+      font-size: 0.85rem;
+      display: flex;
+      flex-direction: column;
+      gap: 4px;
+      text-align: left;
+      width: 100%;
+      max-width: 420px;
+      box-shadow: 0 0 20px rgba(255, 153, 0, 0.1);
+      backdrop-filter: blur(10px);
+    }
   `;
+
+  private formatRetry() {
+    if (!this.nextRetrySeconds) return '';
+    if (this.nextRetrySeconds < 60) return `${Math.max(1, this.nextRetrySeconds)}s`;
+    const minutes = Math.floor(this.nextRetrySeconds / 60);
+    const seconds = this.nextRetrySeconds % 60;
+    return `${minutes}m ${seconds.toString().padStart(2, '0')}s`;
+  }
 
   render() {
       return html`
@@ -165,6 +195,13 @@ export class StatusDisplay extends LitElement {
         <!-- Regular Status -->
         <div class="status-badge" role="status" aria-live="polite">${this.status}</div>
       `}
+
+      ${this.fallbackMessage ? html`
+        <div class="fallback-banner" role="alert">
+          <strong>${this.fallbackMessage}</strong>
+          ${this.nextRetrySeconds ? html`<span>Nouvelle tentative dans ${this.formatRetry()}.</span>` : ''}
+        </div>
+      ` : ''}
 
       <!-- Error Toast -->
       ${this._visibleError ? html`
