@@ -62,28 +62,8 @@ export class MetricsPanel extends LitElement {
   }
 
   render() {
-    return html`
-      <div class="panel" aria-label="Métriques temps réel">
-        <div class="metric">
-          <span class="label">Latence moyenne</span>
-          <span class="value ${this.avgLatency > 600 ? 'danger' : this.avgLatency > 350 ? 'warning' : ''}">
-            ${this.avgLatency} ms
-          </span>
-        </div>
-        <div class="metric">
-          <span class="label">Taux d'erreur</span>
-          <span class="value ${this.errorRate > 10 ? 'danger' : this.errorRate > 5 ? 'warning' : ''}">
-            ${this.errorRate} %
-          </span>
-        </div>
-        <div class="metric">
-          <span class="label">${this.fallback ? 'Mode' : 'Uptime'}</span>
-          <span class="value ${this.fallback ? 'warning' : ''}">
-            ${this.fallback ? 'Fallback actif' : this.uptimeLabel}
-          </span>
-        </div>
-      </div>
-    `;
+    // Toutes les métriques ont été retirées, le panneau est vide
+    return html``;
   }
 }
 
