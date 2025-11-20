@@ -49,12 +49,17 @@ export class GdmLiveAudioVisuals3D extends LitElement {
   private resizeHandler: (() => void) | null = null;
   private visibilityHandler: (() => void) | null = null;
 
+  @property({ type: Boolean }) 
+  lowPowerMode = false;
+
   private _outputNode!: AudioNode;
 
-  @property()
+  @property({attribute: false})
   set outputNode(node: AudioNode) {
     this._outputNode = node;
-    this.outputAnalyser = new Analyser(this._outputNode);
+    if (node) {
+      this.outputAnalyser = new Analyser(this._outputNode);
+    }
   }
 
   get outputNode() {
@@ -63,10 +68,12 @@ export class GdmLiveAudioVisuals3D extends LitElement {
 
   private _inputNode!: AudioNode;
 
-  @property()
+  @property({attribute: false})
   set inputNode(node: AudioNode) {
     this._inputNode = node;
-    this.inputAnalyser = new Analyser(this._inputNode);
+    if (node) {
+      this.inputAnalyser = new Analyser(this._inputNode);
+    }
   }
 
   get inputNode() {
@@ -276,8 +283,23 @@ export class GdmLiveAudioVisuals3D extends LitElement {
     
     this.animationFrameId = requestAnimationFrame(() => this.animation());
 
+    if (!this.inputAnalyser || !this.outputAnalyser) return;
+
     this.inputAnalyser.update();
     this.outputAnalyser.update();
+
+    // Low Power Mode Optimization
+    if (this.lowPowerMode) {
+       const inputMax = Math.max(...this.inputAnalyser.data);
+       const outputMax = Math.max(...this.outputAnalyser.data);
+       // If complete silence, we can skip heavy rendering or reduce frame rate
+       // For now, we just let it rotate slowly but skip bar updates to save some CPU
+       if (inputMax === 0 && outputMax === 0) {
+           this.waveformGroup.rotation.z += 0.001;
+           this.composer.render();
+           return;
+       }
+    }
 
     const t = performance.now() / 1000;
     this.prevTime = t;
