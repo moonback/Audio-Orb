@@ -1,102 +1,135 @@
 # 🎵 NeuroChat
 
-> **Une interface vocale intelligente et immersive alimentée par Google Gemini Multimodal Live API.**
+> Assistant vocal immersif : conversation Gemini Live temps réel, rendu 3D audio-réactif, mémoire persistante et personnalités dynamiques – directement dans le navigateur.
 
-NeuroChat est une application web expérimentale qui combine une conversation vocale naturelle en temps réel avec une visualisation 3D audio-réactive de haute qualité. Elle agit comme un assistant personnel doté d'une mémoire à long terme persistante et de personnalités configurables.
+![Stack](https://img.shields.io/badge/stack-Lit_%2B_Three.js_%2B_Vite-orange)
+![API](https://img.shields.io/badge/AI-Google_Gemini_Live-purple)
+![Status](https://img.shields.io/badge/state-MVP-brightgreen)
 
-![License](https://img.shields.io/badge/license-Apache_2.0-blue.svg)
-![Stack](https://img.shields.io/badge/tech-Lit_•_Three.js_•_Vite-orange.svg)
-![API](https://img.shields.io/badge/AI-Google_Gemini_Live-purple.svg)
+## Sommaire
 
-## ✨ Fonctionnalités Principales
+- [🎵 NeuroChat](#-neurochat)
+  - [Sommaire](#sommaire)
+  - [Présentation](#présentation)
+  - [Stack technique](#stack-technique)
+  - [Fonctionnalités](#fonctionnalités)
+  - [Prérequis](#prérequis)
+  - [Installation \& configuration](#installation--configuration)
+  - [Lancement](#lancement)
+  - [Structure du projet](#structure-du-projet)
+  - [Variables d’environnement](#variables-denvironnement)
+  - [Bonnes pratiques de contribution](#bonnes-pratiques-de-contribution)
+  - [Licence](#licence)
 
-- **🗣️ Conversation Temps Réel** : Latence ultra-faible grâce à l'API WebSocket de Gemini Live.
-- **🧠 Mémoire Long Terme** : L'IA se "souvient" des informations importantes d'une session à l'autre (stockage local).
-- **🎨 Visualisation 3D** : Rendu magnifique (Bloom, Shaders) qui réagit à la voix de l'utilisateur et de l'IA.
-- **🎭 Personnalités Multiples** : Créez, modifiez et changez de personnalité (Assistant, Ami, Mentor, etc.).
-- **🎛️ Contrôle Audio** : Ajustement de la vitesse, du pitch (detune) et choix de la voix en temps réel.
-- **⚡ Performance** : Construit avec **Lit** (Web Components) pour une empreinte légère et rapide.
+## Présentation
 
-## 🛠️ Stack Technique
+NeuroChat est une SPA construite avec Lit qui combine :
+- une boucle audio ultra-basse latence appuyée sur l’API Google Gemini Live (WebSocket) ;
+- une mémoire structurée persistée dans `localStorage` pour conserver le contexte utilisateur ;
+- une scène 3D Three.js qui réagit aux flux audio entrants et sortants ;
+- un panneau de réglages avancés (voix, styles, égaliseur, personnalités).
 
-- **Framework Frontend** : [Lit](https://lit.dev/) (Web Components légers)
-- **3D & Graphismes** : [Three.js](https://threejs.org/) (WebGL, Shaders custom)
-- **Build Tool** : [Vite](https://vitejs.dev/)
-- **IA & Audio** : [Google GenAI SDK](https://www.npmjs.com/package/@google/genai) (Gemini 2.5 Flash Live)
-- **Langage** : TypeScript
+## Stack technique
 
-## 🚀 Installation et Démarrage
+| Domaine | Choix | Rôle |
+| --- | --- | --- |
+| Framework UI | [Lit 3](https://lit.dev) | Web Component racine `gdm-live-audio`, diffing fin, décorateurs `@state`. |
+| Rendu 3D | [Three.js 0.176](https://threejs.org) | Scène sphérique, shaders personnalisés, effets Bloom. |
+| Audio temps réel | Web Audio API + AudioWorklet | Capture micro 16 kHz, pipeline playback 24 kHz, détection de silence. |
+| IA temps réel | [@google/genai](https://www.npmjs.com/package/@google/genai) | Session Live Gemini 2.5 Flash audio, transcripts, latence < 300 ms. |
+| Build & DX | [Vite 6](https://vitejs.dev) + TypeScript 5.8 | Hot reload, injection des variables d’env. |
+| Stockage local | `localStorage` + wrapper `debouncedStorage` | Persistance des préférences, mémoire structurée, personnalités. |
 
-### Prérequis
-- **Node.js** (v18 ou supérieur recommandé)
-- Une **Clé API Google Gemini** (disponible sur [Google AI Studio](https://aistudio.google.com/))
+## Fonctionnalités
 
-### 1. Cloner le projet
-```bash
-git clone https://github.com/votre-username/audio-orb.git
-cd audio-orb
-```
+- **Streaming bidirectionnel** : capture micro, conversion PCM16, envoi chunké, lecture audio en file d’attente avec rattrapage de latence.
+- **Personnalités & voix** : sélection de voix Gemini pré-construites, styles de diction, création/suppression de personnalités custom (prompts persistés).
+- **Mémoire structurée** : catégorisation préférences / faits / contexte, import/export JSON, purge ciblée par catégorie.
+- **Visualisation 3D** : orbites, anneaux, particules et bloom synchronisés avec les analyseurs fréquentiels entrée/sortie.
+- **Contrôles audio** : vitesse (`playbackRate`), `detune`, égaliseur bass/treble + presets (Voix, Musique, Neutre, etc.).
+- **Modes d’interaction** : Focus mode (double-clic), raccourcis clavier (Espace, S, R, D, Échap), export texte des transcriptions.
+- **Résilience** : buffer adaptatif (`AdaptiveBufferManager`), détection appareil (`deviceDetector`) pour ajuster qualité, reconnexion automatique Gemini (3 tentatives).
+- **Accessibilité** : panneaux en verre dépolis, indicateurs latence/VU, statut connecté/déconnecté en direct.
 
-### 2. Installer les dépendances
-```bash
-npm install
-```
+## Prérequis
 
-### 3. Configuration
-Créez un fichier `.env` à la racine du projet (basé sur `.env.example` s'il existe) :
+- Node.js ≥ 18 (LTS recommandé) + npm ≥ 10.
+- Navigateur Chromium récent (support AudioWorklet + WebGL2).
+- Clé API Google Gemini Live (via [Google AI Studio](https://aistudio.google.com/)).
+- Microphone fonctionnel ; carte graphique compatible WebGL pour les visuels.
 
-```env
-# .env
-GEMINI_API_KEY=votre_clé_api_ici
-```
+## Installation & configuration
 
-> **Note** : La clé est injectée par Vite au moment du build via `process.env`.
+1. **Cloner et installer**
+   ```bash
+   git clone https://github.com/votre-organisation/audio-orb.git
+   cd audio-orb
+   npm install
+   ```
 
-### 4. Lancer en développement
-```bash
-npm run dev
-```
-L'application sera accessible sur `http://localhost:3000`.
+2. **Créer l’environnement**
+   ```bash
+   cp .env.example .env # si le fichier existe, sinon créez-le
+   ```
+   ```env
+   GEMINI_API_KEY=votre_cle_ai_studio
+   ```
+   Vite expose automatiquement `process.env.GEMINI_API_KEY` grâce aux `define` du `vite.config.ts`.
 
-### 5. Build pour la production
-```bash
-npm run build
-npm run preview
-```
+3. **Activer l’AudioWorklet**
+   - L’application charge `public/audio-processor.js`. Aucun build manuel requis, mais l’hébergement doit servir ce fichier sous `/audio-processor.js`.
 
-## 📂 Structure du Projet
+## Lancement
+
+| Commande | Description |
+| --- | --- |
+| `npm run dev` | Démarre Vite en mode développement (http://localhost:5173 par défaut). |
+| `npm run build` | Build production (`dist/`) avec minification et hashing. |
+| `npm run preview` | Sert le build de production localement (utile pour tester HTTPS/WebSocket). |
+
+> Déploiement : servir le contenu de `dist/` derrière HTTPS (obligatoire pour `getUserMedia`). Prévoir un proxy backend si vous devez masquer la clé Gemini.
+
+## Structure du projet
 
 ```
 audio-orb/
-├── components/          # Composants UI (Lit)
-│   ├── control-panel.ts # Panneau de contrôle (Mic, Reset)
-│   ├── settings-panel.ts# Gestion des paramètres et personnalités
-│   ├── vu-meter.ts      # Indicateur de volume
-│   └── ...
-├── public/              # Assets statiques (textures, sons)
-├── index.html           # Point d'entrée HTML
-├── index.tsx            # Composant racine (App) & Logique WebSocket
-├── visual-3d.ts         # Moteur de rendu Three.js
-├── personality.ts       # Gestionnaire de personnalités
-├── analyser.ts          # Analyseur audio Web Audio API
-└── vite.config.ts       # Configuration du bundler
+├── components/                 # Web Components UI (Lit)
+│   ├── control-panel.ts        # Boutons micro, reset, export
+│   ├── settings-panel.ts       # Voix, égaliseur, personnalités, mémoire
+│   ├── status-display.ts       # Statut connexion + focus mode
+│   ├── latency-indicator.ts    # Latence Gemini en ms
+│   └── vu-meter.ts             # Niveaux entrée/sortie
+├── services/
+│   ├── audio-engine.ts         # AudioWorklet, EQ, analyzers
+│   └── gemini-client.ts        # Wrapper GoogleGenAI Live
+├── utils/                      # Helpers (buffer adaptatif, device detection, storage…)
+├── visual-3d.ts                # Scène Three.js + shaders
+├── analyser.ts                 # Wrapper AnalyserNode
+├── memory.ts / personality.ts  # Gestion mémoire persistante & prompts
+├── public/audio-processor.js   # AudioWorklet (PCM32 → PCM16, silence)
+├── index.tsx                   # Composant racine `gdm-live-audio`
+├── index.html / index.css      # Shell statique + styles globaux
+├── vite.config.ts              # Build & env injection
+└── docs (.md)                  # Architecture, roadmap, local storage
 ```
 
-## 🔧 Variables d'Environnement
+## Variables d’environnement
 
-| Variable | Description | Requis |
-|----------|-------------|--------|
-| `GEMINI_API_KEY` | Votre clé API Google Gemini (AI Studio) | ✅ Oui |
+| Variable | Description | Obligatoire | Défaut |
+| --- | --- | --- | --- |
+| `GEMINI_API_KEY` | Clé API Gemini Live utilisée par `GeminiClient`. | ✅ | `""` (connexion bloquée) |
 
-## 🤝 Contribuer
+> Aucune autre variable n’est lue côté client. Pour sécuriser la clé, prévoir un serveur proxy qui signe les requêtes.
 
-Les contributions sont les bienvenues !
-1. Forkez le projet
-2. Créez votre branche (`git checkout -b feature/AmazingFeature`)
-3. Committez vos changements (`git commit -m 'Add some AmazingFeature'`)
-4. Pushez sur la branche (`git push origin feature/AmazingFeature`)
-5. Ouvrez une Pull Request
+## Bonnes pratiques de contribution
 
-## 📄 Licence
+- **Branches** : `main` protégé → créez des branches `feature/*` ou `fix/*`.
+- **Qualité** : TypeScript strict, privilégier les Web Components Lit (`@customElement`). Documenter les nouvelles propriétés/événements.
+- **UI/UX** : tester sur bureau + mobile (mode focus, dégradations). Garder les scènes 3D < 60k vertices pour préserver les FPS.
+- **Audio** : ne pas bloquer le thread AudioWorklet (pur JavaScript, pas d’accès DOM). Vérifier le budget latence avant merge.
+- **Docs/tests** : mettre à jour `README`, `ARCHITECTURE.md`, `localstorage_DOCS.md` et ajouter des snapshots (GIF/vidéos) si possible.
+- **Commits** : messages impératifs courts, ex. `feat: add adaptive buffer quality hints`.
 
-Distribué sous la licence Apache 2.0. Voir le fichier `LICENSE` pour plus d'informations.
+## Licence
+
+Projet distribué sous licence **MIT** (si aucun fichier `LICENSE` n’est présent, créez-le avant publication). Ajustez si vous adoptez une licence différente.

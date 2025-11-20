@@ -1,95 +1,52 @@
-# 🗺️ Roadmap - NeuroChat
+# 🗺️ Roadmap – NeuroChat
 
-Ce document présente le plan de développement futur d'NeuroChat, depuis le MVP actuel jusqu'aux fonctionnalités avancées.
+Ce plan trace l’évolution du projet depuis le MVP actuel jusqu’aux releases V1/V2, puis les axes longs termes. Les échéances restent indicatives et seront ajustées en fonction du feedback terrain et des quotas Gemini.
 
-## 📊 État Actuel : MVP ✅
+## État actuel – MVP livrée ✅
 
-### Fonctionnalités Implémentées
-- ✅ Assistant vocal en temps réel avec Google Gemini Live API
-- ✅ 7 voix et 7 styles d'expression configurables
-- ✅ Visualisation 3D audio-réactive (sphère + backdrop + bloom)
-- ✅ Contrôles audio (vitesse, pitch)
-- ✅ Mémoire long terme avec consolidation automatique
-- ✅ Interface de paramètres complète
-- ✅ Persistance des préférences (localStorage)
+- Streaming audio bidirectionnel WebSocket (Gemini 2.5 Flash Live).
+- 7 voix + 7 styles, réglages playback/detune, égaliseur bass/treble + presets.
+- Visualisation 3D audio-réactive (orbite + particules + bloom).
+- Mémoire structurée persistée, import/export JSON, mise à jour auto post-session.
+- UI complète (settings, control, status, focus mode, raccourcis clavier).
+- Persistance locale via `debouncedStorage` & `MemoryManager`.
 
-## 🎯 Phase 1 : Améliorations MVP (Court Terme)
+## Phase V1 – Stabilisation & Observabilité (court terme)
 
-### 1.1 Expérience Utilisateur
-- [x] **Indicateurs visuels améliorés**
-  - [x] Barre de progression pour la latence (Code couleur)
-  - [x] Indicateur de niveau audio (VU meter plus précis)
-  - [x] Animation de chargement pendant la consolidation mémoire
-- [x] **Gestion d'erreurs robuste**
-  - [x] Messages d'erreur utilisateur-friendly (Toast notifications)
-  - [x] Retry automatique en cas de déconnexion
-  - [ ] Fallback si l'API est indisponible
-- [x] **Accessibilité**
-  - [x] Support clavier complet (Espace: start/stop, S: settings, R: reset, D: download, Échap: fermer)
-  - [x] ARIA labels pour lecteurs d'écran
+| Thème | Objectifs | Statut |
+| --- | --- | --- |
+| Résilience API | Fallback en cas d’indispo Gemini (message clair, tempo retry), monitoring latence, exposition d’un indicateur de quota | 🔄 À faire |
+| UX & accessibilité | Mode clair, options de texte agrandi, aide contextuelle, onboarding rapide | 🚧 Planifié |
+| Observabilité | Ajout de métriques (latence moyenne, taux d’erreur) et d’un logger télescopique (Sentry / console structurée) | 🕑 À faire |
+| Audio | Choix du micro/sortie, visualisation spectrale additionnelle (mini waveform), calibration auto du gain | 🕑 À faire |
+| Tooling | Scripts de tests basiques (lint/tsc), CI minimale (build + preview) | ✅ en partie (build) |
 
-### 1.2 Performance & Optimisation
-- [x] **Optimisation audio**
-  - [x] Réduction de la latence (buffer adaptatif)
-  - [x] Détection de silence pour économiser la bande passante API
-- [x] **Optimisation 3D**
-  - [x] LOD (Level of Detail) dynamique selon le device
-  - [x] Réduction qualité sur appareils mobiles
-  - [x] Pause automatique quand onglet inactif
+## Phase V2 – Personnalisation & Intelligence (moyen terme)
 
-### 1.3 Fonctionnalités Audio
-- [x] **Égaliseur audio**
-  - [x] Contrôles bass/treble
-  - [x] Presets audio (Voix, Musique, Neutre, Bass Boost, Clarté)
-- [x] **Enregistrement de sessions**
-  - [x] Historique des sessions (Export .txt)
+| Volet | Items | Notes |
+| --- | --- | --- |
+| Personnalisation visuelle | Thèmes (Dark/Lucid/Neon), sliders d’intensité FX, presets visuels partageables | dépend GPU |
+| Mémoire intelligente | Recherche sémantique dans `StructuredMemory`, scoring de fraîcheur, suggestions d’archivage | nécessite quotas API supplémentaires |
+| Automations | Webhooks ou Function Calling (Notion, Calendar, Slack) pour pousser des résumés ou rappels | impliquer un backend |
+| Multilingue | Localisation de l’UI (FR/EN), mapping voix ↔ langue | nécessite mapping voix Gemini |
 
-## 🚀 Phase 2 : Fonctionnalités Avancées (Moyen Terme)
+## Backlog long terme
 
-### 2.1 Personnalisation Avancée
-- [ ] **Thèmes visuels**
-  - [ ] Thèmes prédéfinis (Dark, Light, Neon, Cyberpunk)
-  - [ ] Éditeur de couleurs personnalisé
-- [ ] **Visualisations alternatives**
-  - [ ] Mode particules
-  - [ ] Mode waveform classique
-  - [ ] Mode spectrogramme
-- [ ] **Voix personnalisées**
-  - [ ] Upload de voix personnalisées (si supporté par Gemini)
+- **Collaboration** : conversations multiparticipants avec relais de flux audio (WebRTC), salle partagée.
+- **Proxy backend** : sécuriser `GEMINI_API_KEY`, gérer authentification OAuth, quotas multi-utilisateurs, stockage mémoire partagé (ex. Supabase).
+- **Apps natives** : empaquetage Tauri/Electron (desktop), Capacitor (mobile) pour accéder à des APIs plus profondes (Bluetooth, audio bas niveau).
+- **Marketplace** : galerie publique de personnalités/visuels, export/import via JSON signé.
 
-### 2.2 Intelligence & Mémoire
-- [x] **Mémoire structurée**
-  - [x] Catégorisation (préférences vs faits vs contexte)
-  - [ ] Recherche sémantique dans la mémoire
-  - [x] Export/import de la mémoire (JSON)
-- [ ] **Intégrations**
-  - [ ] Connexion calendrier ou notes (Notion/Google Keep) via Function Calling
+## Timeline indicative
 
-## 🌟 Phase 3 : Fonctionnalités Premium (Long Terme)
+| Période | Livraison visée | Commentaires |
+| --- | --- | --- |
+| **Q4 2025** | V1 (stabilité + observabilité) | Finaliser fallback, UX onboarding, instrumentation. |
+| **Q1 2026** | V2 (personnalisation & mémoire intelligente) | Déployer thèmes, LLM pour recherche mémoire, débuts d’intégration externe. |
+| **Q2+ 2026** | Initiatives long terme | Proxy backend, collaboration, packaging apps. |
 
-### 3.1 Collaboration & Partage
-- [ ] **Sessions partagées**
-  - [ ] Conversations multi-utilisateurs
-- [ ] **Communauté**
-  - [ ] Partage de thèmes et personnalités
-  - [ ] Galerie de visualisations
+## Suivi & contribution
 
-### 3.2 Déploiement & Sécurité
-- [ ] **Backend Proxy**
-  - [ ] Sécurisation de la clé API via un serveur intermédiaire (Node.js/Go)
-  - [ ] Authentification utilisateur réelle (OAuth)
-- [ ] **Applications Natives**
-  - [ ] Version Desktop (Electron/Tauri)
-  - [ ] Version Mobile (React Native/Capacitor)
-
-## 📅 Timeline Estimée
-
-| Période | Phase | Focus |
-|---------|-------|-------|
-| **Q1 2025** | 1.x | UX, Stabilité, Optimisations |
-| **Q2 2025** | 2.x | Personnalisation, Nouveaux Visuels |
-| **Q3 2025** | 3.x | Backend, Auth, Apps Natives |
-
-## 🤝 Contribution
-
-Voir le fichier `README.md` pour les instructions de contribution.
+- Les PRs doivent mentionner la case roadmap ciblée.
+- Chaque ajout de fonctionnalité doit mettre à jour ce fichier + `README`.
+- Les changements impactant la persistance doivent également modifier `localstorage_DOCS.md`.
