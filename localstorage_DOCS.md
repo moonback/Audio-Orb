@@ -16,7 +16,6 @@ NeuroChat n’embarque pas de base de données serveur. Toutes les préférences
 | `gdm-treble` | `string` num. | `"2"` | `settings-panel`, `audio-engine` | Gain EQ high-shelf (dB). |
 | `gdm-audio-preset` | `string` | `"Voix"` | `settings-panel` | Nom du preset appliqué (Voix, Musique, Neutre...). |
 | `gdm-personality` | `string` | `"mentor"` | `settings-panel` | ID de la personnalité active. |
-| `gdm-theme` | `string` | `"light"` | `settings-panel` | Thème de l’UI (`dark` / `light`). |
 | `gdm-text-scale` | `string` num. | `"1.1"` | `settings-panel` | Facteur d’agrandissement du texte (1 = 100 %). |
 | `gdm-input-device` | `string` | `"default"` | `settings-panel` | `deviceId` du micro choisi (fallback `default`). |
 | `gdm-output-device` | `string` | `"default"` | `settings-panel` | `deviceId` de la sortie audio (`setSinkId`). |
