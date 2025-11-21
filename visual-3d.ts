@@ -18,8 +18,6 @@ import {RenderPass} from 'three/addons/postprocessing/RenderPass.js';
 import {ShaderPass} from 'three/addons/postprocessing/ShaderPass.js';
 import {UnrealBloomPass} from 'three/addons/postprocessing/UnrealBloomPass.js';
 import {FXAAShader} from 'three/addons/shaders/FXAAShader.js';
-import {fs as backdropFS, vs as backdropVS} from './backdrop-shader';
-import {vs as waveformVS, fs as waveformFS} from './waveform-shader';
 
 /**
  * 3D live audio visual.
@@ -30,9 +28,18 @@ export class GdmLiveAudioVisuals3D extends LitElement {
   private outputAnalyser!: Analyser;
   private camera!: THREE.PerspectiveCamera;
   private composer!: EffectComposer;
-  private waveformGroup!: THREE.Group;
-  private waveformBars: THREE.Mesh[] = [];
+  private audioVisualGroup!: THREE.Group;
+  private particles!: THREE.Points;
+  private particleSystem!: THREE.BufferGeometry;
+  private particlePositions!: Float32Array;
+  private particleVelocities!: Float32Array;
+  private particleSizes!: Float32Array;
+  private lines!: THREE.Line[];
+  private centralShape!: THREE.Mesh;
+  private outerRings: THREE.Mesh[] = [];
+  private audioSpheres: THREE.Mesh[] = [];
   private prevTime = 0;
+  private scene!: THREE.Scene;
   
   // Smoothed audio data
   private smoothedAudioData = new THREE.Vector3(0, 0, 0);
@@ -103,9 +110,20 @@ export class GdmLiveAudioVisuals3D extends LitElement {
     
     const scene = new THREE.Scene();
     scene.background = new THREE.Color(0x000000); // Pure black
+    scene.fog = new THREE.FogExp2(0x000000, 0.05); // Subtle fog for depth
+    this.scene = scene;
 
-    const ambientLight = new THREE.AmbientLight(0xffffff, 0.05);
+    const ambientLight = new THREE.AmbientLight(0xffffff, 0.08);
     scene.add(ambientLight);
+    
+    // Add point lights for dynamic lighting
+    const light1 = new THREE.PointLight(0x00ffff, 0.5, 10);
+    light1.position.set(2, 2, 2);
+    scene.add(light1);
+    
+    const light2 = new THREE.PointLight(0xff00ff, 0.5, 10);
+    light2.position.set(-2, -2, 2);
+    scene.add(light2);
 
     const camera = new THREE.PerspectiveCamera(
       75,
@@ -128,53 +146,142 @@ export class GdmLiveAudioVisuals3D extends LitElement {
     renderer.setClearColor(0x000000, 1);
     this.renderer = renderer;
 
-    // Professional Waveform with adaptive quality
-    const aspect = window.innerWidth / window.innerHeight;
-    const barCount = this.qualitySettings.barCount;
-    const baseRadius = Math.min(2.2, 2.0 * Math.min(aspect, 1.0 / aspect));
-    const barWidth = 0.05;
+    // Create main audio visual group
+    const audioVisualGroup = new THREE.Group();
+    this.audioVisualGroup = audioVisualGroup;
+    scene.add(audioVisualGroup);
+
+    // Enhanced Particle System with variable sizes
+    const particleCount = Math.min(800, this.qualitySettings.barCount * 30);
+    const particles = new Float32Array(particleCount * 3);
+    const velocities = new Float32Array(particleCount * 3);
+    const colors = new Float32Array(particleCount * 3);
+    const sizes = new Float32Array(particleCount);
     
-    const waveformGroup = new THREE.Group();
-    
-    for (let i = 0; i < barCount; i++) {
-      const angle = (i / barCount) * Math.PI * 2;
-      const barGeometry = new THREE.BoxGeometry(barWidth, 0.1, barWidth);
+    for (let i = 0; i < particleCount; i++) {
+      const i3 = i * 3;
+      const radius = Math.random() * 3.5;
+      const theta = Math.random() * Math.PI * 2;
+      const phi = Math.acos(Math.random() * 2 - 1);
       
-      const barMaterial = new THREE.ShaderMaterial({
-        uniforms: {
-          time: { value: 0 },
-          audioData: { value: new THREE.Vector3() },
-          barIndex: { value: i / barCount },
-          audioValue: { value: 0 },
-          activeSpeaker: { value: 0 } // New uniform
-        },
-        vertexShader: waveformVS,
-        fragmentShader: waveformFS,
-        transparent: true,
-      });
+      particles[i3] = radius * Math.sin(phi) * Math.cos(theta);
+      particles[i3 + 1] = radius * Math.sin(phi) * Math.sin(theta);
+      particles[i3 + 2] = radius * Math.cos(phi);
       
-      const bar = new THREE.Mesh(barGeometry, barMaterial);
+      velocities[i3] = (Math.random() - 0.5) * 0.015;
+      velocities[i3 + 1] = (Math.random() - 0.5) * 0.015;
+      velocities[i3 + 2] = (Math.random() - 0.5) * 0.015;
       
-      bar.position.x = Math.cos(angle) * baseRadius;
-      bar.position.y = Math.sin(angle) * baseRadius;
-      bar.position.z = 0;
+      // Variable particle sizes for depth
+      sizes[i] = Math.random() * 0.08 + 0.02;
       
-      bar.rotation.z = angle + Math.PI / 2;
-      
-      waveformGroup.add(bar);
-      this.waveformBars.push(bar);
+      // Dynamic color based on radius (creates layers)
+      const layerT = radius / 3.5;
+      colors[i3] = 0.0 + layerT * 1.0;       // R: 0 -> 1
+      colors[i3 + 1] = 0.9 - layerT * 0.9;   // G: 0.9 -> 0
+      colors[i3 + 2] = 1.0;                  // B: constant
     }
     
-    scene.add(waveformGroup);
-    this.waveformGroup = waveformGroup;
+    this.particlePositions = particles;
+    this.particleVelocities = velocities;
+    this.particleSizes = sizes;
+    
+    const particleGeometry = new THREE.BufferGeometry();
+    particleGeometry.setAttribute('position', new THREE.BufferAttribute(particles, 3));
+    particleGeometry.setAttribute('color', new THREE.BufferAttribute(colors, 3));
+    particleGeometry.setAttribute('size', new THREE.BufferAttribute(sizes, 1));
+    
+    const particleMaterial = new THREE.PointsMaterial({
+      size: 0.06,
+      vertexColors: true,
+      transparent: true,
+      opacity: 0.85,
+      blending: THREE.AdditiveBlending,
+      sizeAttenuation: true,
+      map: this.createParticleTexture(),
+    });
+    
+    this.particles = new THREE.Points(particleGeometry, particleMaterial);
+    this.particleSystem = particleGeometry;
+    audioVisualGroup.add(this.particles);
+
+    // Central geometric shape - Audio-reactive icosahedron
+    const icosaGeometry = new THREE.IcosahedronGeometry(0.6, 1);
+    const icosaMaterial = new THREE.MeshPhongMaterial({
+      color: 0x00ffff,
+      transparent: true,
+      opacity: 0.7,
+      wireframe: true,
+      emissive: 0x00ffff,
+      emissiveIntensity: 0.3,
+    });
+    this.centralShape = new THREE.Mesh(icosaGeometry, icosaMaterial);
+    audioVisualGroup.add(this.centralShape);
+    
+    // Add outer rotating rings for depth
+    for (let i = 0; i < 3; i++) {
+      const ringRadius = 1.2 + i * 0.4;
+      const ringGeometry = new THREE.TorusGeometry(ringRadius, 0.02, 8, 32);
+      const ringMaterial = new THREE.MeshBasicMaterial({
+        color: i === 0 ? 0x00ffff : i === 1 ? 0xff00ff : 0x7f55cc,
+        transparent: true,
+        opacity: 0.3,
+        wireframe: false,
+      });
+      const ring = new THREE.Mesh(ringGeometry, ringMaterial);
+      ring.rotation.x = Math.PI / 2 + (i * Math.PI / 6);
+      this.outerRings.push(ring);
+      audioVisualGroup.add(ring);
+    }
+    
+    // Add audio-reactive spheres at different positions
+    const sphereCount = 6;
+    for (let i = 0; i < sphereCount; i++) {
+      const angle = (i / sphereCount) * Math.PI * 2;
+      const radius = 2.5;
+      const sphereGeometry = new THREE.SphereGeometry(0.1, 16, 16);
+      const sphereMaterial = new THREE.MeshBasicMaterial({
+        color: 0x00ffff,
+        transparent: true,
+        opacity: 0.6,
+      });
+      const sphere = new THREE.Mesh(sphereGeometry, sphereMaterial);
+      sphere.position.set(
+        Math.cos(angle) * radius,
+        Math.sin(angle) * radius,
+        0
+      );
+      this.audioSpheres.push(sphere);
+      audioVisualGroup.add(sphere);
+    }
+
+    // Enhanced audio-reactive lines with glow
+    this.lines = [];
+    const lineCount = Math.min(50, particleCount / 10);
+    for (let i = 0; i < lineCount; i++) {
+      const lineGeometry = new THREE.BufferGeometry();
+      const linePositions = new Float32Array(2 * 3);
+      lineGeometry.setAttribute('position', new THREE.BufferAttribute(linePositions, 3));
+      
+      const lineMaterial = new THREE.LineBasicMaterial({
+        color: 0x00ffff,
+        transparent: true,
+        opacity: 0.25,
+        linewidth: 2,
+      });
+      
+      const line = new THREE.Line(lineGeometry, lineMaterial);
+      this.lines.push(line);
+      audioVisualGroup.add(line);
+    }
 
     // Post Processing
     const renderPass = new RenderPass(scene, camera);
 
     const bloomPass = new UnrealBloomPass(
       new THREE.Vector2(window.innerWidth, window.innerHeight),
-      this.qualitySettings.bloomIntensity,
-      this.qualitySettings.bloomThreshold,
+      this.qualitySettings.bloomIntensity * 1.5, // Increased intensity
+      this.qualitySettings.bloomThreshold * 0.7, // Lower threshold for more glow
       this.qualitySettings.bloomRadius,
     );
 
@@ -210,14 +317,7 @@ export class GdmLiveAudioVisuals3D extends LitElement {
         }
       }
       
-      const aspect = w / h;
-      const baseRadius = Math.min(2.2, 2.0 * Math.min(aspect, 1.0 / aspect));
-      const barCount = this.waveformBars.length;
-      for (let i = 0; i < barCount; i++) {
-        const angle = (i / barCount) * Math.PI * 2;
-        this.waveformBars[i].position.x = Math.cos(angle) * baseRadius;
-        this.waveformBars[i].position.y = Math.sin(angle) * baseRadius;
-      }
+      // Resize handled by camera aspect update
     };
 
     this.resizeHandler = onWindowResize;
@@ -261,12 +361,46 @@ export class GdmLiveAudioVisuals3D extends LitElement {
       this.renderer.dispose();
     }
     
-    this.waveformBars.forEach(bar => {
-      (bar.geometry as THREE.BufferGeometry).dispose();
-      if (Array.isArray(bar.material)) {
-        bar.material.forEach(mat => mat.dispose());
+    if (this.particleSystem) {
+      this.particleSystem.dispose();
+    }
+    if (this.particles) {
+      if (Array.isArray(this.particles.material)) {
+        this.particles.material.forEach(mat => mat.dispose());
       } else {
-        bar.material.dispose();
+        this.particles.material.dispose();
+      }
+    }
+    if (this.centralShape) {
+      (this.centralShape.geometry as THREE.BufferGeometry).dispose();
+      if (Array.isArray(this.centralShape.material)) {
+        this.centralShape.material.forEach(mat => mat.dispose());
+      } else {
+        this.centralShape.material.dispose();
+      }
+    }
+    this.outerRings.forEach(ring => {
+      (ring.geometry as THREE.BufferGeometry).dispose();
+      if (Array.isArray(ring.material)) {
+        ring.material.forEach(mat => mat.dispose());
+      } else {
+        ring.material.dispose();
+      }
+    });
+    this.audioSpheres.forEach(sphere => {
+      (sphere.geometry as THREE.BufferGeometry).dispose();
+      if (Array.isArray(sphere.material)) {
+        sphere.material.forEach(mat => mat.dispose());
+      } else {
+        sphere.material.dispose();
+      }
+    });
+    this.lines.forEach(line => {
+      (line.geometry as THREE.BufferGeometry).dispose();
+      if (Array.isArray(line.material)) {
+        line.material.forEach(mat => mat.dispose());
+      } else {
+        line.material.dispose();
       }
     });
     
@@ -292,10 +426,10 @@ export class GdmLiveAudioVisuals3D extends LitElement {
     if (this.lowPowerMode) {
        const inputMax = Math.max(...this.inputAnalyser.data);
        const outputMax = Math.max(...this.outputAnalyser.data);
-       // If complete silence, we can skip heavy rendering or reduce frame rate
-       // For now, we just let it rotate slowly but skip bar updates to save some CPU
+       // If complete silence, slow ambient animation
        if (inputMax === 0 && outputMax === 0) {
-           this.waveformGroup.rotation.z += 0.001;
+           this.audioVisualGroup.rotation.y += 0.001;
+           this.audioVisualGroup.rotation.x += 0.0005;
            this.composer.render();
            return;
        }
@@ -335,38 +469,202 @@ export class GdmLiveAudioVisuals3D extends LitElement {
     this.smoothedAudioData.y += (targetMid - this.smoothedAudioData.y) * lerpFactor;
     this.smoothedAudioData.z += (targetHigh - this.smoothedAudioData.z) * lerpFactor;
 
-    const barCount = this.waveformBars.length;
-    const aspect = window.innerWidth / window.innerHeight;
-    const baseRadius = Math.min(2.0, 1.8 * Math.min(aspect, 1.0 / aspect));
+    // Update particle system
+    const positions = this.particleSystem.attributes.position.array as Float32Array;
+    const particleCount = positions.length / 3;
+    const energy = this.smoothedAudioData.x + this.smoothedAudioData.y + this.smoothedAudioData.z;
     
-    for (let i = 0; i < barCount; i++) {
-      const bar = this.waveformBars[i];
-      const mat = bar.material as THREE.ShaderMaterial;
+    for (let i = 0; i < particleCount; i++) {
+      const i3 = i * 3;
       
-      const audioIndex = Math.floor((i / barCount) * 16);
+      // Update velocity based on audio
+      const audioIndex = Math.floor((i / particleCount) * 16);
       const inVal = this.inputAnalyser.data[audioIndex] || 0;
       const outVal = this.outputAnalyser.data[audioIndex] || 0;
       const audioValue = Math.max(inVal, outVal) / 255.0;
       
-      mat.uniforms.time.value = t;
-      mat.uniforms.audioData.value.copy(this.smoothedAudioData);
-      mat.uniforms.audioValue.value = audioValue;
-      mat.uniforms.activeSpeaker.value = this.smoothedSpeaker; // Pass speaker info
+      // Apply audio-reactive forces (only when audio is present)
+      if (audioValue > 0.1) {
+        const force = audioValue * 0.05;
+        this.particleVelocities[i3] += (Math.random() - 0.5) * force;
+        this.particleVelocities[i3 + 1] += (Math.random() - 0.5) * force;
+        this.particleVelocities[i3 + 2] += (Math.random() - 0.5) * force;
+      }
       
-      const angle = (i / barCount) * Math.PI * 2;
-      const barHeight = 0.15 + audioValue * 2.8;
+      // Update positions
+      positions[i3] += this.particleVelocities[i3];
+      positions[i3 + 1] += this.particleVelocities[i3 + 1];
+      positions[i3 + 2] += this.particleVelocities[i3 + 2];
       
-      const currentScale = bar.scale.y;
-      const targetScale = barHeight;
-      bar.scale.y += (targetScale - currentScale) * 0.3;
+      // Damping
+      this.particleVelocities[i3] *= 0.97;
+      this.particleVelocities[i3 + 1] *= 0.97;
+      this.particleVelocities[i3 + 2] *= 0.97;
       
-      bar.position.x = Math.cos(angle) * baseRadius;
-      bar.position.y = Math.sin(angle) * baseRadius;
+      // Boundary - pull back to center with audio-reactive expansion
+      const dist = Math.sqrt(positions[i3] ** 2 + positions[i3 + 1] ** 2 + positions[i3 + 2] ** 2);
+      const maxDist = 2.5 + energy * 1.5;
+      
+      if (dist > maxDist) {
+        const pull = 0.03;
+        const normalized = dist > 0 ? dist : 1;
+        positions[i3] *= (1 - pull);
+        positions[i3 + 1] *= (1 - pull);
+        positions[i3 + 2] *= (1 - pull);
+      } else if (dist < 0.5) {
+        // Push away from center if too close
+        const push = 0.01;
+        positions[i3] += (positions[i3] / dist) * push;
+        positions[i3 + 1] += (positions[i3 + 1] / dist) * push;
+        positions[i3 + 2] += (positions[i3 + 2] / dist) * push;
+      }
     }
     
-    this.waveformGroup.rotation.z += 0.001 + this.smoothedAudioData.x * 0.005;
+    this.particleSystem.attributes.position.needsUpdate = true;
+    
+    // Update central shape with smooth color transitions
+    const icosaMat = this.centralShape.material as THREE.MeshPhongMaterial;
+    const targetColor = new THREE.Color();
+    if (this.smoothedSpeaker < -0.1) {
+      targetColor.setHex(0x00ffff); // Cyan for user
+    } else if (this.smoothedSpeaker > 0.1) {
+      targetColor.setHex(0xff00ff); // Magenta for AI
+    } else {
+      targetColor.setHex(0x7f55cc); // Purple neutral
+    }
+    icosaMat.color.lerp(targetColor, 0.1);
+    icosaMat.emissive.copy(icosaMat.color).multiplyScalar(0.3);
+    
+    const scale = 1 + energy * 0.4;
+    this.centralShape.scale.set(scale, scale, scale);
+    this.centralShape.rotation.x += 0.012 + energy * 0.025;
+    this.centralShape.rotation.y += 0.018 + energy * 0.03;
+    this.centralShape.rotation.z += 0.005 + energy * 0.01;
+    
+    // Update outer rings with audio-reactive rotation
+    this.outerRings.forEach((ring, index) => {
+      const ringMat = ring.material as THREE.MeshBasicMaterial;
+      ringMat.color.lerp(targetColor, 0.08);
+      ringMat.opacity = 0.2 + energy * 0.3;
+      
+      const speed = 0.01 + (index * 0.005) + energy * 0.02;
+      ring.rotation.z += speed * (index % 2 === 0 ? 1 : -1);
+      ring.rotation.y += speed * 0.5;
+      
+      const ringScale = 1 + energy * 0.2;
+      ring.scale.set(ringScale, ringScale, ringScale);
+    });
+    
+    // Update audio-reactive spheres
+    this.audioSpheres.forEach((sphere, index) => {
+      const sphereMat = sphere.material as THREE.MeshBasicMaterial;
+      sphereMat.color.lerp(targetColor, 0.1);
+      
+      const audioIndex = Math.floor((index / this.audioSpheres.length) * 16);
+      const inVal = this.inputAnalyser.data[audioIndex] || 0;
+      const outVal = this.outputAnalyser.data[audioIndex] || 0;
+      const audioValue = Math.max(inVal, outVal) / 255.0;
+      
+      const sphereScale = 1 + audioValue * 2;
+      sphere.scale.set(sphereScale, sphereScale, sphereScale);
+      sphereMat.opacity = 0.4 + audioValue * 0.4;
+      
+      // Orbit animation
+      const angle = (index / this.audioSpheres.length) * Math.PI * 2 + t * 0.3;
+      const radius = 2.5 + Math.sin(t * 2 + index) * 0.3;
+      sphere.position.set(
+        Math.cos(angle) * radius,
+        Math.sin(angle) * radius,
+        Math.sin(t + index) * 0.5
+      );
+    });
+    
+    // Update connecting lines with smarter connections
+    for (let i = 0; i < this.lines.length; i++) {
+      const line = this.lines[i];
+      const linePos = line.geometry.attributes.position.array as Float32Array;
+      
+      // Connect nearby particles for more natural look
+      const idx1 = Math.floor(Math.random() * particleCount);
+      let minDist = Infinity;
+      let idx2 = idx1;
+      
+      // Find a nearby particle
+      for (let j = 0; j < Math.min(20, particleCount); j++) {
+        const testIdx = Math.floor(Math.random() * particleCount);
+        const i3_1 = idx1 * 3;
+        const i3_2 = testIdx * 3;
+        const dist = Math.sqrt(
+          (positions[i3_1] - positions[i3_2]) ** 2 +
+          (positions[i3_1 + 1] - positions[i3_2 + 1]) ** 2 +
+          (positions[i3_1 + 2] - positions[i3_2 + 2]) ** 2
+        );
+        if (dist < minDist && dist > 0.1) {
+          minDist = dist;
+          idx2 = testIdx;
+        }
+      }
+      
+      const i3_1 = idx1 * 3;
+      const i3_2 = idx2 * 3;
+      
+      linePos[0] = positions[i3_1];
+      linePos[1] = positions[i3_1 + 1];
+      linePos[2] = positions[i3_1 + 2];
+      linePos[3] = positions[i3_2];
+      linePos[4] = positions[i3_2 + 1];
+      linePos[5] = positions[i3_2 + 2];
+      
+      line.geometry.attributes.position.needsUpdate = true;
+      
+      const lineMat = line.material as THREE.LineBasicMaterial;
+      // Fade lines based on distance
+      const maxLineDistance = 1.5;
+      const distanceFade = Math.max(0, 1 - minDist / maxLineDistance);
+      lineMat.opacity = (0.1 + energy * 0.4) * distanceFade;
+      
+      const targetLineColor = new THREE.Color();
+      if (this.smoothedSpeaker < -0.1) {
+        targetLineColor.setHex(0x00ffff);
+      } else if (this.smoothedSpeaker > 0.1) {
+        targetLineColor.setHex(0xff00ff);
+      } else {
+        targetLineColor.setHex(0x7f55cc);
+      }
+      lineMat.color.lerp(targetLineColor, 0.1);
+    }
+    
+    // Rotate entire group with dynamic camera movement
+    this.audioVisualGroup.rotation.y += 0.002 + this.smoothedAudioData.x * 0.004;
+    this.audioVisualGroup.rotation.x += 0.001 + this.smoothedAudioData.y * 0.003;
+    
+    // Dynamic camera movement for depth
+    this.camera.position.z = 5 + Math.sin(t * 0.5) * 0.3;
+    this.camera.position.x = Math.sin(t * 0.3) * 0.2;
+    this.camera.position.y = Math.cos(t * 0.3) * 0.2;
+    this.camera.lookAt(0, 0, 0);
 
     this.composer.render();
+  }
+  
+  // Create a circular gradient texture for particles
+  private createParticleTexture(): THREE.Texture {
+    const canvas = document.createElement('canvas');
+    canvas.width = 32;
+    canvas.height = 32;
+    const ctx = canvas.getContext('2d')!;
+    
+    const gradient = ctx.createRadialGradient(16, 16, 0, 16, 16, 16);
+    gradient.addColorStop(0, 'rgba(255, 255, 255, 1)');
+    gradient.addColorStop(0.5, 'rgba(255, 255, 255, 0.5)');
+    gradient.addColorStop(1, 'rgba(255, 255, 255, 0)');
+    
+    ctx.fillStyle = gradient;
+    ctx.fillRect(0, 0, 32, 32);
+    
+    const texture = new THREE.Texture(canvas);
+    texture.needsUpdate = true;
+    return texture;
   }
 
   protected firstUpdated() {
