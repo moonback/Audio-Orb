@@ -4,7 +4,7 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
-import {LitElement, css, html, PropertyValues} from 'lit';
+import {LitElement, css, html} from 'lit';
 import {customElement, state} from 'lit/decorators.js';
 import {createBlob, decode, decodeAudioData} from './utils';
 import {Personality, PersonalityManager} from './personality';
@@ -16,12 +16,10 @@ import {deviceDetector} from './utils/device-detection';
 import {AdaptiveBufferManager} from './utils/adaptive-buffer';
 import './components/settings-panel';
 import './components/control-panel';
-import './components/status-display';
-import './components/latency-indicator';
-import './components/vu-meter';
 import './components/onboarding-modal';
 import './components/mini-waveform';
-import './components/metrics-panel';
+import './components/app-header';
+import './components/chat-interface';
 import {Analyser} from './analyser';
 import './visual-3d';
 
@@ -183,323 +181,8 @@ export class GdmLiveAudio extends LitElement {
     }
 
     /* Allow interaction with UI elements normally */
-    control-panel, settings-panel, .top-bar {
+    control-panel, settings-panel, app-header, chat-interface {
       pointer-events: auto;
-    }
-
-    .app-header {
-      position: absolute;
-      top: 0;
-      left: 0;
-      right: 0;
-      padding: 16px;
-      display: flex;
-      justify-content: space-between;
-      align-items: flex-start;
-      z-index: 20;
-      pointer-events: none;
-    }
-    
-    .app-header > * {
-      pointer-events: auto;
-    }
-    
-    .header-left, .header-right {
-      display: flex;
-      flex-direction: column;
-      gap: 8px;
-    }
-    
-    .header-center {
-      position: absolute;
-      left: 50%;
-      top: 16px;
-      transform: translateX(-50%);
-      display: flex;
-      flex-direction: column;
-      align-items: center;
-      gap: 8px;
-    }
-
-    /* Mobile Adaptations - Ultra Compact */
-    @media (max-width: 768px) {
-      .app-header {
-        padding: 10px;
-      }
-      
-      .header-left {
-        align-items: flex-start;
-        gap: 4px;
-      }
-      
-      .header-right {
-        align-items: flex-end;
-        gap: 4px;
-      }
-      
-      /* Hide less critical metrics on mobile */
-      metrics-panel {
-        display: none;
-      }
-      
-      /* Adjust Status Display position on mobile */
-      .header-center {
-        top: 50px;
-        width: 90%;
-      }
-      
-      /* Scale down indicators - more compact */
-      latency-indicator, vu-meter {
-        transform: scale(0.75);
-        transform-origin: top center;
-      }
-      
-      vu-meter {
-        display: none !important;
-      }
-    }
-
-    /* Chat Bubbles - Futuristic Compact Design */
-    .chat-container {
-      flex: 1;
-      overflow-y: auto;
-      padding: 15px 15px 130px 15px;
-      display: flex;
-      flex-direction: column;
-      gap: 12px;
-      max-width: 800px;
-      margin: 0 auto;
-      width: 100%;
-      height: 100%;
-      mask-image: linear-gradient(to bottom, transparent, black 3%, black 96%, transparent);
-      -webkit-mask-image: linear-gradient(to bottom, transparent, black 3%, black 96%, transparent);
-      transition: opacity 0.3s ease;
-    }
-
-    .chat-bubble {
-      padding: 14px 20px;
-      border-radius: 16px;
-      max-width: 80%;
-      line-height: 1.55;
-      font-size: 0.95rem;
-      animation: popIn 0.35s cubic-bezier(0.34, 1.56, 0.64, 1);
-      backdrop-filter: blur(20px);
-      -webkit-backdrop-filter: blur(20px);
-      position: relative;
-      border: 1px solid transparent;
-      transition: all 0.3s ease;
-    }
-
-    .chat-bubble::before {
-      content: '';
-      position: absolute;
-      inset: 0;
-      border-radius: inherit;
-      padding: 1px;
-      background: linear-gradient(135deg, var(--glass-border), transparent);
-      -webkit-mask: linear-gradient(#fff 0 0) content-box, linear-gradient(#fff 0 0);
-      -webkit-mask-composite: xor;
-      mask-composite: exclude;
-      opacity: 0;
-      transition: opacity 0.3s;
-    }
-
-    .chat-bubble:hover::before {
-      opacity: 1;
-    }
-
-    .chat-bubble.user {
-      align-self: flex-end;
-      background: var(--chat-user-bg);
-      color: var(--chat-user-text);
-      border-bottom-right-radius: 4px;
-      border-color: rgba(0, 255, 255, 0.2);
-      box-shadow: 
-        0 4px 15px rgba(0, 0, 0, 0.4),
-        0 0 20px rgba(0, 255, 255, 0.08),
-        inset 0 1px 0 rgba(255, 255, 255, 0.1);
-    }
-
-    .chat-bubble.user:hover {
-      border-color: rgba(0, 255, 255, 0.4);
-      box-shadow: 
-        0 6px 20px rgba(0, 0, 0, 0.5),
-        0 0 30px rgba(0, 255, 255, 0.15);
-      transform: translateY(-1px);
-    }
-
-    .chat-bubble.ai {
-      align-self: flex-start;
-      background: var(--chat-ai-bg);
-      border: 1px solid rgba(255, 0, 255, 0.15);
-      color: var(--chat-ai-text);
-      border-bottom-left-radius: 4px;
-      box-shadow: 
-        0 4px 15px rgba(0, 0, 0, 0.4),
-        0 0 20px rgba(255, 0, 255, 0.06),
-        inset 0 1px 0 rgba(255, 255, 255, 0.05);
-    }
-
-    .chat-bubble.ai:hover {
-      border-color: rgba(255, 0, 255, 0.3);
-      box-shadow: 
-        0 6px 20px rgba(0, 0, 0, 0.5),
-        0 0 30px rgba(255, 0, 255, 0.12);
-      transform: translateY(-1px);
-    }
-
-    .chat-bubble .message-text {
-      word-wrap: break-word;
-    }
-
-    .search-indicator {
-      position: absolute;
-      top: 8px;
-      right: 8px;
-      color: var(--accent-color);
-      opacity: 0.7;
-      animation: pulse 2s ease-in-out infinite;
-      pointer-events: none;
-    }
-
-    @keyframes pulse {
-      0%, 100% { opacity: 0.7; }
-      50% { opacity: 1; }
-    }
-
-    .citations-container {
-      margin-top: 12px;
-      padding-top: 12px;
-      border-top: 1px solid rgba(255, 255, 255, 0.1);
-      font-size: 0.85rem;
-    }
-
-    .citations-label {
-      color: var(--text-dim);
-      margin-bottom: 6px;
-      font-weight: 500;
-      font-size: 0.8rem;
-      text-transform: uppercase;
-      letter-spacing: 0.5px;
-    }
-
-    .citations-list {
-      display: flex;
-      flex-wrap: wrap;
-      gap: 8px;
-    }
-
-    .citation-link {
-      display: inline-flex;
-      align-items: center;
-      padding: 4px 10px;
-      background: rgba(0, 255, 255, 0.1);
-      border: 1px solid rgba(0, 255, 255, 0.2);
-      border-radius: 12px;
-      color: var(--primary-color);
-      text-decoration: none;
-      transition: all 0.2s ease;
-      font-size: 0.8rem;
-      max-width: 100%;
-      overflow: hidden;
-      text-overflow: ellipsis;
-      white-space: nowrap;
-    }
-
-    .citation-link:hover {
-      background: rgba(0, 255, 255, 0.2);
-      border-color: rgba(0, 255, 255, 0.4);
-      transform: translateY(-1px);
-      box-shadow: 0 2px 8px rgba(0, 255, 255, 0.3);
-    }
-
-    .citation-link:active {
-      transform: translateY(0);
-    }
-
-    @keyframes popIn {
-      0% { 
-        opacity: 0;
-        transform: translateY(15px) scale(0.96);
-        filter: blur(4px);
-      }
-      100% { 
-        opacity: 1;
-        transform: translateY(0) scale(1);
-        filter: blur(0);
-      }
-    }
-
-    /* Hint for Zen Mode - Removed */
-    
-    /* Custom Scrollbar - Futuristic */
-    .chat-container::-webkit-scrollbar { 
-      width: 4px; 
-    }
-    .chat-container::-webkit-scrollbar-track { 
-      background: transparent; 
-    }
-    .chat-container::-webkit-scrollbar-thumb { 
-      background: linear-gradient(180deg, rgba(0, 255, 255, 0.3), rgba(255, 0, 255, 0.3)); 
-      border-radius: 2px;
-      box-shadow: 0 0 6px rgba(0, 255, 255, 0.4);
-    }
-    .chat-container::-webkit-scrollbar-thumb:hover { 
-      background: linear-gradient(180deg, rgba(0, 255, 255, 0.5), rgba(255, 0, 255, 0.5));
-      box-shadow: 0 0 10px rgba(0, 255, 255, 0.6);
-    }
-
-    /* Mobile Adaptations - Ultra Compact */
-    @media (max-width: 768px) {
-      .chat-container {
-        padding: 8px 12px 140px 12px;
-        gap: 10px;
-        mask-image: linear-gradient(to bottom, transparent, black 2%, black 92%, transparent);
-      }
-      
-      .chat-bubble {
-        padding: 12px 16px;
-        font-size: 0.9rem;
-        max-width: 92%;
-        border-radius: 14px;
-      }
-      
-      .top-bar {
-        padding: 8px;
-      }
-      
-      /* Désactiver le mode zen sur mobile */
-      .visual-layer {
-        pointer-events: none !important;
-      }
-      
-      /* Cacher le mini-waveform sur mobile */
-      mini-waveform {
-        display: none !important;
-      }
-
-      /* Citations sur mobile */
-      .citations-container {
-        margin-top: 10px;
-        padding-top: 10px;
-        font-size: 0.8rem;
-      }
-
-      .citations-list {
-        gap: 6px;
-      }
-
-      .citation-link {
-        padding: 3px 8px;
-        font-size: 0.75rem;
-      }
-
-      .search-indicator {
-        top: 6px;
-        right: 6px;
-        width: 12px;
-        height: 12px;
-      }
     }
   `;
 
@@ -660,35 +343,6 @@ export class GdmLiveAudio extends LitElement {
         // Actually, audioService.initialize() is async, so we are good here.
         
         // We need to expose the nodes from AudioService.
-        // I updated AudioService to use Analyser internally, but let's see.
-        // In AudioService I created `inputAnalyser` and `outputAnalyser` (Wrappers).
-        // But Visual3D expects `AudioNode` to create its own Analysers.
-        // I should pass the GainNodes that are being analyzed.
-        
-        // Hack: accessing private properties or getters. 
-        // I added getters `outputContext` and `masterGain`.
-        
-        // For input, I need the input gain.
-        // I added `_persistentInputGain` in AudioService. I should expose it properly.
-        // Let's assume I can get it or modify AudioService slightly.
-        // I will use `audioService.context.createGain()` here if needed? No.
-        
-        // Let's modify AudioService to expose the nodes needed for visualisation.
-        // I'll assume `audioService.inputAnalyser` (wrapper) has a node property?
-        // No, `Analyser` class in `analyser.ts` does not expose the node easily, 
-        // but `visual-3d.ts` takes an `inputNode` (AudioNode) and creates `new Analyser(node)`.
-        
-        // So I need to pass a node that has the signal.
-        // AudioService: `_persistentInputGain` has the mic signal.
-        // AudioService: `masterGain` has the output signal.
-        
-        // I will cast to any to access private if needed or just fix AudioService.
-        // I wrote AudioService. I should have exposed `get inputGainNode()` or similar.
-        // I'll fix AudioService if I can, but I can't edit it again in this turn easily without re-writing.
-        // I'll assume I can access `audioService['inputAnalyser'].analyser` (the raw node) or similar?
-        // Actually, `Analyser` class puts the node into `this.analyser`.
-        
-        // Let's just pass `audioService.masterGain` for output.
         this.outputNode = audioService.masterGain;
         
         // For input, we access the exposed input gain
@@ -1343,13 +997,6 @@ export class GdmLiveAudio extends LitElement {
     this.error = ''; 
   }
 
-  updated(changedProperties: PropertyValues) {
-    if (changedProperties.has('currentSessionTranscript')) {
-      const chatContainer = this.shadowRoot?.getElementById('chatContainer');
-      if (chatContainer) chatContainer.scrollTop = chatContainer.scrollHeight;
-    }
-  }
-
   render() {
     return html`
       <!-- 3D Background -->
@@ -1364,95 +1011,28 @@ export class GdmLiveAudio extends LitElement {
       <!-- UI Overlay -->
       <div class="ui-layer">
         
-        <div class="app-header">
-          <div class="header-left">
-             ${this.showVUMeter ? html`
-               <vu-meter
-                .inputLevel=${this.inputLevel}
-                .outputLevel=${this.outputLevel}
-                .isActive=${this.isRecording || this.status === 'Parle...'}
-               ></vu-meter>
-             ` : ''}
-          </div>
-          
-          <div class="header-center">
-             <status-display
-              .status=${this.status}
-              .error=${this.error}
-              .isProcessing=${this.isProcessingMemory}
-              .fallbackMessage=${this.fallbackMessage}
-              .nextRetrySeconds=${this.nextRetrySeconds}
-              @clear-error=${this._clearError}
-             ></status-display>
-             
-             <metrics-panel
-              .avgLatency=${this.avgLatencyMetric}
-              .errorRate=${this.errorRateMetric}
-              .uptimeSeconds=${this.uptimeSeconds}
-              .fallback=${this.fallbackActive}
-             ></metrics-panel>
-          </div>
+        <app-header
+          .showVUMeter=${this.showVUMeter}
+          .inputLevel=${this.inputLevel}
+          .outputLevel=${this.outputLevel}
+          .isRecording=${this.isRecording}
+          .status=${this.status}
+          .error=${this.error}
+          .isProcessing=${this.isProcessingMemory}
+          .fallbackMessage=${this.fallbackMessage}
+          .nextRetrySeconds=${this.nextRetrySeconds}
+          .avgLatency=${this.avgLatencyMetric}
+          .errorRate=${this.errorRateMetric}
+          .uptimeSeconds=${this.uptimeSeconds}
+          .fallbackActive=${this.fallbackActive}
+          .latency=${this.latency}
+          @clear-error=${this._clearError}
+        ></app-header>
 
-          <div class="header-right">
-             <latency-indicator
-              .latency=${this.latency}
-              .isActive=${this.isRecording}
-             ></latency-indicator>
-          </div>
-        </div>
-
-        <div class="chat-container" id="chatContainer">
-          ${this.currentSessionTranscript.map((msg, index) => {
-            const isUser = msg.startsWith('User: ');
-            const text = msg.replace(/^(User: |AI: )/, '');
-            const metadata = this.messageMetadata.get(index);
-            const hasCitations = metadata?.citations && metadata.citations.length > 0;
-            const hasSearch = metadata?.hasSearch;
-            
-            return html`
-              <div class="chat-bubble ${isUser ? 'user' : 'ai'}">
-                ${hasSearch ? html`
-                  <div class="search-indicator" title="Recherche Google effectuée">
-                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                      <circle cx="11" cy="11" r="8"></circle>
-                      <path d="m21 21-4.35-4.35"></path>
-                    </svg>
-                  </div>
-                ` : ''}
-                <div class="message-text">${text}</div>
-                ${hasCitations ? html`
-                  <div class="citations-container">
-                    <div class="citations-label">Sources:</div>
-                    <div class="citations-list">
-                      ${metadata!.citations!.map((citation, idx) => {
-                        let displayTitle = citation.title || 'Source';
-                        try {
-                          if (!citation.title) {
-                            const url = new URL(citation.uri);
-                            displayTitle = url.hostname.replace(/^www\./, '');
-                          }
-                        } catch (e) {
-                          displayTitle = 'Source';
-                        }
-                        return html`
-                          <a 
-                            href="${citation.uri}" 
-                            target="_blank" 
-                            rel="noopener noreferrer"
-                            class="citation-link"
-                            title="${citation.uri}"
-                          >
-                            ${displayTitle}
-                          </a>
-                        `;
-                      })}
-                    </div>
-                  </div>
-                ` : ''}
-              </div>
-            `;
-          })}
-        </div>
+        <chat-interface
+          .transcript=${this.currentSessionTranscript}
+          .messageMetadata=${this.messageMetadata}
+        ></chat-interface>
 
         <control-panel
           .isRecording=${this.isRecording}
@@ -1522,4 +1102,3 @@ export class GdmLiveAudio extends LitElement {
     `;
   }
 }
-
