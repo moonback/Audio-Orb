@@ -40,15 +40,20 @@ export class SettingsPanel extends LitElement {
 
   static styles = css`
     :host {
-      font-family: system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif;
-      --bg-panel: #18181b;
-      --bg-input: #27272a;
-      --border-color: #3f3f46;
-      --primary-color: #3b82f6; /* Professional Blue */
-      --primary-hover: #2563eb;
-      --danger-color: #ef4444;
-      --text-main: #f4f4f5;
-      --text-dim: #a1a1aa;
+      font-family: 'Exo 2', 'Google Sans', Roboto, sans-serif;
+      --bg-panel: rgba(8, 12, 20, 0.95);
+      --bg-input: rgba(15, 20, 30, 0.8);
+      --bg-card: rgba(12, 18, 28, 0.6);
+      --border-color: rgba(0, 240, 255, 0.2);
+      --border-hover: rgba(0, 240, 255, 0.4);
+      --primary-color: #00ffff; /* Neon Cyan */
+      --primary-hover: #00cccc;
+      --secondary-color: #ff00ff; /* Neon Magenta */
+      --danger-color: #ff4444;
+      --text-main: #ffffff;
+      --text-dim: #a0d7ff;
+      --glow-cyan: rgba(0, 255, 255, 0.3);
+      --glow-magenta: rgba(255, 0, 255, 0.3);
       z-index: 100;
     }
 
@@ -68,13 +73,13 @@ export class SettingsPanel extends LitElement {
     .settings-overlay {
       position: absolute;
       inset: 0;
-      background: rgba(0, 0, 0, 0.6);
+      background: rgba(0, 0, 0, 0.75);
       display: flex;
       align-items: center;
       justify-content: center;
-      backdrop-filter: blur(4px);
+      backdrop-filter: blur(8px);
       opacity: 0;
-      animation: fadeIn 0.2s ease-out forwards;
+      animation: fadeIn 0.3s ease-out forwards;
     }
 
     @keyframes fadeIn {
@@ -84,23 +89,41 @@ export class SettingsPanel extends LitElement {
     .settings-panel {
       background: var(--bg-panel);
       border: 1px solid var(--border-color);
-      border-radius: 12px;
-      padding: 24px;
-      width: 800px;
+      border-radius: 20px;
+      padding: 32px;
+      width: 850px;
       max-width: 90vw;
-      max-height: 85vh;
+      max-height: 90vh;
       overflow-y: auto;
       color: var(--text-main);
       box-shadow: 
-        0 20px 25px -5px rgba(0, 0, 0, 0.1), 
-        0 10px 10px -5px rgba(0, 0, 0, 0.04);
-      transform: scale(0.95);
+        0 0 40px rgba(0, 240, 255, 0.15),
+        0 0 80px rgba(188, 19, 254, 0.1),
+        0 20px 60px rgba(0, 0, 0, 0.5);
+      transform: scale(0.95) translateY(20px);
       opacity: 0;
-      animation: slideUp 0.2s ease-out forwards;
+      animation: slideUp 0.3s cubic-bezier(0.34, 1.56, 0.64, 1) forwards;
+      position: relative;
+    }
+
+    .settings-panel::before {
+      content: '';
+      position: absolute;
+      inset: 0;
+      border-radius: 20px;
+      padding: 1px;
+      background: linear-gradient(135deg, 
+        rgba(0, 240, 255, 0.3) 0%, 
+        rgba(188, 19, 254, 0.3) 50%,
+        rgba(0, 240, 255, 0.3) 100%);
+      -webkit-mask: linear-gradient(#fff 0 0) content-box, linear-gradient(#fff 0 0);
+      -webkit-mask-composite: xor;
+      mask-composite: exclude;
+      pointer-events: none;
     }
 
     @keyframes slideUp {
-      to { transform: scale(1); opacity: 1; }
+      to { transform: scale(1) translateY(0); opacity: 1; }
     }
 
     /* Scrollbar */
@@ -122,57 +145,117 @@ export class SettingsPanel extends LitElement {
       display: flex;
       justify-content: space-between;
       align-items: center;
-      margin-bottom: 24px;
+      margin-bottom: 32px;
       border-bottom: 1px solid var(--border-color);
-      padding-bottom: 16px;
+      padding-bottom: 20px;
+      position: relative;
+    }
+
+    .settings-header::after {
+      content: '';
+      position: absolute;
+      bottom: -1px;
+      left: 0;
+      width: 100px;
+      height: 2px;
+      background: linear-gradient(90deg, var(--primary-color), var(--secondary-color));
+      border-radius: 2px;
     }
     
     .settings-header h2 {
       margin: 0;
-      font-size: 1.25rem;
-      font-weight: 600;
-      color: var(--text-main);
-      letter-spacing: -0.025em;
+      font-size: 1.75rem;
+      font-weight: 700;
+      background: linear-gradient(135deg, var(--primary-color), var(--secondary-color));
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+      background-clip: text;
+      letter-spacing: -0.02em;
+      text-transform: uppercase;
+      font-size: 1.5rem;
     }
 
     .settings-header button {
-      background: transparent;
+      background: rgba(0, 240, 255, 0.1);
       border: 1px solid var(--border-color);
-      color: var(--text-dim);
+      color: var(--text-main);
       cursor: pointer;
-      padding: 8px;
-      border-radius: 8px;
+      padding: 10px;
+      border-radius: 10px;
       display: flex;
-      transition: all 0.2s;
+      align-items: center;
+      justify-content: center;
+      transition: all 0.3s;
+      width: 40px;
+      height: 40px;
     }
     
     .settings-header button:hover {
-      background: var(--bg-input);
-      color: var(--text-main);
+      background: rgba(0, 240, 255, 0.2);
+      border-color: var(--primary-color);
+      box-shadow: 0 0 15px var(--glow-cyan);
+      transform: rotate(90deg);
     }
 
     .setting-group {
-      margin-bottom: 24px;
+      margin-bottom: 28px;
+      background: var(--bg-card);
+      border: 1px solid var(--border-color);
+      border-radius: 16px;
+      padding: 20px;
+      transition: all 0.3s;
+      position: relative;
+      overflow: hidden;
+    }
+
+    .setting-group::before {
+      content: '';
+      position: absolute;
+      top: 0;
+      left: 0;
+      right: 0;
+      height: 2px;
+      background: linear-gradient(90deg, 
+        transparent, 
+        var(--primary-color), 
+        var(--secondary-color),
+        transparent);
+      opacity: 0;
+      transition: opacity 0.3s;
+    }
+
+    .setting-group:hover::before {
+      opacity: 1;
+    }
+
+    .setting-group:hover {
+      border-color: var(--border-hover);
+      box-shadow: 0 0 20px rgba(0, 240, 255, 0.1);
     }
 
     .setting-label {
       display: flex;
       justify-content: space-between;
       align-items: center;
-      margin-bottom: 8px;
-      font-size: 0.875rem;
-      font-weight: 500;
+      margin-bottom: 12px;
+      font-size: 0.95rem;
+      font-weight: 600;
       color: var(--text-main);
+      text-transform: uppercase;
+      letter-spacing: 0.05em;
+      font-size: 0.85rem;
     }
 
     .setting-value {
-      font-family: monospace;
-      font-size: 0.75rem;
-      background: var(--bg-input);
-      padding: 2px 6px;
-      border-radius: 4px;
-      color: var(--text-dim);
+      font-family: 'Courier New', monospace;
+      font-size: 0.8rem;
+      background: linear-gradient(135deg, rgba(0, 240, 255, 0.15), rgba(188, 19, 254, 0.15));
+      padding: 4px 10px;
+      border-radius: 8px;
+      color: var(--primary-color);
       border: 1px solid var(--border-color);
+      font-weight: 600;
+      box-shadow: 0 0 10px rgba(0, 240, 255, 0.2);
     }
 
     .device-select {
@@ -187,16 +270,18 @@ export class SettingsPanel extends LitElement {
       background: var(--bg-input);
       border: 1px solid var(--border-color);
       color: var(--text-main);
-      padding: 10px 12px;
-      border-radius: 6px;
+      padding: 12px 16px;
+      border-radius: 10px;
       font-size: 0.9rem;
       font-family: inherit;
       outline: none;
-      transition: border-color 0.2s;
+      transition: all 0.3s;
     }
 
     select:focus, input[type="text"]:focus, textarea:focus {
       border-color: var(--primary-color);
+      box-shadow: 0 0 15px rgba(0, 240, 255, 0.3);
+      background: rgba(15, 20, 30, 0.95);
     }
     
     select option {
@@ -213,27 +298,40 @@ export class SettingsPanel extends LitElement {
 
     input[type=range]::-webkit-slider-thumb {
       -webkit-appearance: none;
-      height: 16px;
-      width: 16px;
+      height: 18px;
+      width: 18px;
       border-radius: 50%;
-      background: var(--primary-color);
+      background: linear-gradient(135deg, var(--primary-color), var(--secondary-color));
       cursor: pointer;
-      margin-top: -6px; 
-      box-shadow: 0 2px 4px rgba(0,0,0,0.2);
+      margin-top: -7px; 
+      box-shadow: 0 0 15px var(--glow-cyan), 0 2px 8px rgba(0,0,0,0.3);
+      transition: all 0.2s;
+    }
+
+    input[type=range]::-webkit-slider-thumb:hover {
+      transform: scale(1.2);
+      box-shadow: 0 0 20px var(--glow-cyan), 0 0 30px var(--glow-magenta);
     }
 
     input[type=range]::-webkit-slider-runnable-track {
       width: 100%;
-      height: 4px;
+      height: 6px;
       cursor: pointer;
-      background: var(--border-color);
-      border-radius: 2px;
+      background: linear-gradient(90deg, 
+        var(--border-color) 0%, 
+        rgba(0, 240, 255, 0.3) 50%,
+        var(--border-color) 100%);
+      border-radius: 3px;
     }
 
     .info-text {
       font-size: 0.8rem;
       color: var(--text-dim);
-      margin-top: 6px;
+      margin-top: 8px;
+      padding-left: 12px;
+      border-left: 2px solid var(--border-color);
+      font-style: italic;
+      line-height: 1.5;
     }
     
     textarea.memory-display {
@@ -251,72 +349,107 @@ export class SettingsPanel extends LitElement {
       background: var(--bg-input);
       border: 1px solid var(--border-color);
       color: var(--text-main);
-      padding: 8px 16px;
-      border-radius: 6px;
+      padding: 12px 20px;
+      border-radius: 10px;
       cursor: pointer;
       font-size: 0.875rem;
-      font-weight: 500;
+      font-weight: 600;
       margin-top: 8px;
       width: 100%;
-      transition: all 0.2s;
+      transition: all 0.3s;
       display: inline-flex;
       align-items: center;
       justify-content: center;
       gap: 8px;
+      text-transform: uppercase;
+      letter-spacing: 0.05em;
+      position: relative;
+      overflow: hidden;
+    }
+
+    .btn-small::before {
+      content: '';
+      position: absolute;
+      inset: 0;
+      background: linear-gradient(135deg, var(--primary-color), var(--secondary-color));
+      opacity: 0;
+      transition: opacity 0.3s;
     }
 
     .btn-small:hover {
-      background: #3f3f46;
+      background: rgba(0, 240, 255, 0.1);
+      border-color: var(--primary-color);
+      box-shadow: 0 0 20px rgba(0, 240, 255, 0.3);
+      transform: translateY(-2px);
     }
 
     .btn-small.primary {
-      background: var(--primary-color);
-      border-color: var(--primary-color);
+      background: linear-gradient(135deg, var(--primary-color), var(--secondary-color));
+      border-color: transparent;
       color: white;
+      box-shadow: 0 0 20px rgba(0, 240, 255, 0.4);
     }
 
     .btn-small.primary:hover {
-      background: var(--primary-hover);
+      box-shadow: 0 0 30px rgba(0, 240, 255, 0.6), 0 0 40px rgba(188, 19, 254, 0.4);
+      transform: translateY(-2px) scale(1.02);
     }
     
     .btn-small.danger {
       color: var(--danger-color);
-      border-color: rgba(239, 68, 68, 0.3);
+      border-color: rgba(255, 68, 68, 0.3);
     }
     
     .btn-small.danger:hover {
-      background: rgba(239, 68, 68, 0.1);
+      background: rgba(255, 68, 68, 0.15);
       border-color: var(--danger-color);
+      box-shadow: 0 0 20px rgba(255, 68, 68, 0.3);
     }
 
     .btn-icon {
-      background: transparent;
-      border: none;
+      background: rgba(255, 68, 68, 0.1);
+      border: 1px solid rgba(255, 68, 68, 0.3);
       cursor: pointer;
       font-size: 1.1rem;
-      padding: 4px;
-      border-radius: 4px;
+      padding: 6px;
+      border-radius: 8px;
       color: var(--text-dim);
-      transition: color 0.2s;
+      transition: all 0.3s;
+      display: flex;
+      align-items: center;
+      justify-content: center;
     }
     .btn-icon:hover { 
         color: var(--danger-color);
-        background: rgba(239, 68, 68, 0.1);
+        background: rgba(255, 68, 68, 0.2);
+        border-color: var(--danger-color);
+        box-shadow: 0 0 15px rgba(255, 68, 68, 0.4);
+        transform: scale(1.1);
     }
     
     .btn-icon-small {
       background: transparent;
-      border: none;
+      border: 1px solid transparent;
       cursor: pointer;
       color: var(--text-dim);
-      font-size: 1.1rem;
-      padding: 2px 6px;
-      border-radius: 4px;
+      font-size: 1.2rem;
+      padding: 4px 8px;
+      border-radius: 6px;
+      transition: all 0.3s;
+      font-weight: bold;
+      width: 28px;
+      height: 28px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
     }
     
     .btn-icon-small:hover {
       color: var(--danger-color);
-      background: rgba(239, 68, 68, 0.1);
+      background: rgba(255, 68, 68, 0.15);
+      border-color: rgba(255, 68, 68, 0.4);
+      box-shadow: 0 0 10px rgba(255, 68, 68, 0.3);
+      transform: scale(1.2);
     }
     
     .memory-categories {
@@ -327,9 +460,10 @@ export class SettingsPanel extends LitElement {
       max-height: 300px;
       overflow-y: auto;
       background: var(--bg-input);
-      border-radius: 8px;
-      padding: 8px;
+      border-radius: 12px;
+      padding: 12px;
       border: 1px solid var(--border-color);
+      box-shadow: inset 0 0 20px rgba(0, 0, 0, 0.3);
     }
     
     .memory-category {
@@ -345,19 +479,24 @@ export class SettingsPanel extends LitElement {
     }
     
     .category-title {
-      font-weight: 600;
+      font-weight: 700;
       font-size: 0.75rem;
-      color: var(--text-dim);
-      text-transform: uppercase;
-      letter-spacing: 0.05em;
-    }
-    
-    .category-count {
-      background: rgba(255,255,255,0.1);
       color: var(--text-main);
-      padding: 1px 6px;
-      border-radius: 4px;
+      text-transform: uppercase;
+      letter-spacing: 0.1em;
+      display: flex;
+      align-items: center;
+      gap: 6px;
+    }
+
+    .category-count {
+      background: linear-gradient(135deg, var(--primary-color), var(--secondary-color));
+      color: #000;
+      padding: 3px 8px;
+      border-radius: 10px;
       font-size: 0.7rem;
+      font-weight: 700;
+      box-shadow: 0 0 10px rgba(0, 240, 255, 0.4);
     }
     
     .memory-items {
@@ -370,15 +509,19 @@ export class SettingsPanel extends LitElement {
       display: flex;
       justify-content: space-between;
       align-items: center;
-      padding: 8px 12px;
+      padding: 10px 14px;
       background: var(--bg-panel);
-      border-radius: 6px;
+      border-radius: 10px;
       font-size: 0.85rem;
       border: 1px solid transparent;
+      transition: all 0.3s;
     }
-    
+
     .memory-item:hover {
-      border-color: var(--border-color);
+      border-color: var(--border-hover);
+      background: rgba(0, 240, 255, 0.05);
+      box-shadow: 0 0 10px rgba(0, 240, 255, 0.2);
+      transform: translateX(4px);
     }
     
     .memory-item span {
@@ -414,9 +557,13 @@ export class SettingsPanel extends LitElement {
     
     .creation-form {
       margin-top: 16px;
-      padding-top: 16px;
+      padding-top: 20px;
       border-top: 1px solid var(--border-color);
-      animation: fadeIn 0.2s ease;
+      animation: fadeIn 0.3s ease;
+      background: rgba(0, 240, 255, 0.03);
+      border-radius: 12px;
+      padding: 16px;
+      margin-top: 12px;
     }
     
     .creation-form input {
@@ -813,8 +960,12 @@ export class SettingsPanel extends LitElement {
             </div>
           </div>
           
-          <div style="text-align: center; margin-top: 40px; color: var(--text-dim); font-size: 0.8rem;">
-            NeuroChat - v2.0
+          <div style="text-align: center; margin-top: 40px; padding-top: 24px; border-top: 1px solid var(--border-color);">
+            <div style="color: var(--text-dim); font-size: 0.75rem; text-transform: uppercase; letter-spacing: 0.1em;">
+              <span style="background: linear-gradient(135deg, var(--primary-color), var(--secondary-color)); -webkit-background-clip: text; -webkit-text-fill-color: transparent; background-clip: text; font-weight: 700;">NeuroChat</span>
+              <span style="margin: 0 8px;">•</span>
+              <span>v2.0</span>
+            </div>
           </div>
         </div>
       </div>
